@@ -79,6 +79,10 @@ func main() {
 
         flag.Parse()
 
+        // Checking the remaining flag used : if there are unknown flags, we stop.
+        if len(flag.Args()) > 0 {
+            log.Fatal("Please use the good arguments. Use -h for help.")
+        }
         tiny_path = *rootPtr
 
         if tiny_path == "" {
@@ -93,7 +97,6 @@ func main() {
         }
 
         if !(*alicePtr) && !(*bobPtr) {
-            log.Fatal("Please run as server Alice (-a) first and then as Bob (-b). Use -h for help.")
         }
 
         if len(*initPtr)<32 {
@@ -103,5 +106,6 @@ func main() {
         switch {
                 case *alicePtr: alice(*initPtr,*ports)
                 case *bobPtr: bob(*initPtr,*addrPtr, *ports)
+                default : log.Fatal("Please run as server Alice (-a) first and then as Bob (-b). Use -h for help.")
         }
 }
