@@ -13,6 +13,7 @@ import (
 var tiny_path string
 var circuitPath string
 
+// just an example on how to use Stdin, for reference. Coming straight from the Go Docs
 func ExampleCommand() {
 	cmd := exec.Command("tr", "a-z", "A-Z")
 	cmd.Stdin = strings.NewReader("some input")
@@ -31,8 +32,12 @@ func endian(data string) string {
 
 	//trimming since there are easily \n in cmd lines outputs.
 	data = strings.TrimSpace(data)
+	if len(data)%2 != 0 {
+		log.Printf("You can't change the endianness of a string whose length isn't a multiple of 2. Please check your data.")
+		return data
+	}
 
-	//if the data isn't in hex format, i.e. if if hasn't an even number of char, then the programmer made some mistake... Don't need to check if %2==0
+	//if the data isn't in hex format, i.e. if it hasn't an even number of char, then the programmer made some mistake... Don't need to check if %2==0
 	for len(data) >= 2 {
 		ans += data[len(data)-2:]
 		//fmt.Printf(ans+"\n")
@@ -51,6 +56,7 @@ func alice(data string, port string, clock_cycles int) {
 	if clock_cycles > 1 {
 		inputArg = "--init"
 	}
+
 	fmt.Println(tiny_path, circuitPath, inputArg, data, port)
 	out, err := exec.Command(
 		tiny_path+"/bin/garbled_circuit/TinyGarble", "-a",
@@ -112,6 +118,7 @@ func main() {
 		log.Fatal("Please use the good arguments. Use -h for help.")
 	}
 
+	// We now initialize the TinyGarble root path
 	tiny_path = *rootPtr
 	if tiny_path == "" {
 		fmt.Printf("$TINYGARBLE not set. Assuming TinyGarble is located in $HOME/Code/TinyGarble\n")
@@ -124,6 +131,7 @@ func main() {
 		}
 	}
 
+	// We next initialize the circuit path based on the default value or on the user's input
 	circuitPath = *circuitPathPtr + "/"
 	// We convert $TINYGARBLE into tiny_path, mainly because of the default value includes it.
 	if strings.Contains(circuitPath, "$TINYGARBLE") {
@@ -132,10 +140,12 @@ func main() {
 
 	circuitPath += *circuitPtr
 
+	// sanity check for the input
 	if len(*initPtr) < 32 {
 		log.Fatal("Please give an init value of length 32 at least until I've implemented padding.")
 	}
 
+	// we can continue, everything is initialized.
 	switch {
 	case *alicePtr:
 		alice(*initPtr, *portsPtr, *clockcyclesPtr)
