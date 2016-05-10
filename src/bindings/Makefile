@@ -5,7 +5,7 @@ all:
 	    go build  -o ${EXEC} ${SOURCE}
 
 fmt:
-		gofmt -w ${SOURCE}
+	    gofmt -w ${SOURCE}
 
 .PHONY: install clean
 
