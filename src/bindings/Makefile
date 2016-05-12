@@ -1,10 +1,10 @@
-EXEC=bindings
-SOURCE=bindings.go
+EXEC=tinygarblego
+SOURCE=tinygarble.go
 
-all:
+all: ${SOURCE} 
 	    go build  -o ${EXEC} ${SOURCE}
 
-fmt:
+fmt: ${SOURCE}
 	    gofmt -w ${SOURCE}
 
 .PHONY: install clean
