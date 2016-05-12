@@ -10,7 +10,7 @@ import (
 	"strings"
 )
 
-var tiny_path string
+var tinyPath string
 var circuitPath string
 
 // just an example on how to use Stdin, for reference. Coming straight from the Go Docs
@@ -26,7 +26,7 @@ func ExampleCommand() {
 	fmt.Printf("in all caps: %q\n", out.String())
 }
 
-func endian(data string) string {
+func ReverseEndianness(data string) string {
 	//initalizing the return value as an empty string
 	ans := ""
 
@@ -50,16 +50,16 @@ func endian(data string) string {
 func alice(data string, port string, clock_cycles int) {
 	fmt.Printf("Alice here, running as server on port %s.\n", port)
 	// Note the change of endianness for the data
-	data = endian(data)
+	data = ReverseEndianness(data)
 
 	inputArg := "--input"
 	if clock_cycles > 1 {
 		inputArg = "--init"
 	}
 
-	fmt.Println(tiny_path, circuitPath, inputArg, data, port)
+	fmt.Println(tinyPath, circuitPath, inputArg, data, port)
 	out, err := exec.Command(
-		tiny_path+"/bin/garbled_circuit/TinyGarble", "-a",
+		tinyPath+"/bin/garbled_circuit/TinyGarble", "-a",
 		"-i", circuitPath,
 		inputArg, data[:32], "-p", port).Output()
 
@@ -72,7 +72,7 @@ func alice(data string, port string, clock_cycles int) {
 func bob(data string, addr string, port string, clock_cycles int) {
 	fmt.Printf("Bob here, running as client on address %s and port %s.\n", addr, port)
 	// Note the change of endianness for the data
-	data = endian(data)
+	data = ReverseEndianness(data)
 
 	inputArg := "--input"
 	if clock_cycles > 1 {
@@ -80,7 +80,7 @@ func bob(data string, addr string, port string, clock_cycles int) {
 	}
 
 	out, err := exec.Command(
-		tiny_path+"/bin/garbled_circuit/TinyGarble", "-b",
+		tinyPath+"/bin/garbled_circuit/TinyGarble", "-b",
 		"-i", circuitPath,
 		inputArg, data[:32], "-s", addr, "-p", port, "--output_mode", "2").Output()
 	// We specify the --output_mode arg to be "last_clock" only, since otherwise it would output each clock cycle intermediate states.
@@ -119,12 +119,12 @@ func main() {
 	}
 
 	// We now initialize the TinyGarble root path
-	tiny_path = *rootPtr
-	if tiny_path == "" {
+	tinyPath = *rootPtr
+	if tinyPath == "" {
 		fmt.Printf("$TINYGARBLE not set. Assuming TinyGarble is located in $HOME/Code/TinyGarble\n")
 		home := os.Getenv("HOME")
 		if home != "" {
-			tiny_path = home + "/Code/TinyGarble"
+			tinyPath = home + "/Code/TinyGarble"
 			// TODO: check if path exists (exec.Command does it, but it may be better to perform the check here)
 		} else {
 			log.Fatal("$HOME is not set. Please provide path to TinyGarble's root as argument or set $TINYGARBLE env var to its path.")
@@ -133,9 +133,9 @@ func main() {
 
 	// We next initialize the circuit path based on the default value or on the user's input
 	circuitPath = *circuitPathPtr + "/"
-	// We convert $TINYGARBLE into tiny_path, mainly because of the default value includes it.
+	// We convert $TINYGARBLE into tinyPath, mainly because of the default value includes it.
 	if strings.Contains(circuitPath, "$TINYGARBLE") {
-		circuitPath = strings.Replace(circuitPath, "$TINYGARBLE", tiny_path, -1)
+		circuitPath = strings.Replace(circuitPath, "$TINYGARBLE", tinyPath, -1)
 	}
 
 	circuitPath += *circuitPtr
