@@ -1,13 +1,13 @@
-EXEC=tinygarblego
+EXEC=tinygarble
 SOURCE=tinygarble.go
 
-all: ${SOURCE} 
+all:        ${SOURCE} 
 	    go build  -o ${EXEC} ${SOURCE}
 
-fmt: ${SOURCE}
+fmt:        ${SOURCE}
 	    gofmt -w ${SOURCE}
 
-.PHONY: install clean
+.PHONY:     install clean
 
 install:
 	    go install ./...
