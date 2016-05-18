@@ -51,7 +51,7 @@ func ReverseEndianness(data string) string {
 	return ans
 }
 
-func alice(data string, port string, clock_cycles int) {
+func YaoServer(data string, port string, clock_cycles int) {
 	fmt.Printf("Alice here, running as server on port %s.\n", port)
 	// Note the change of endianness for the data
 	data = ReverseEndianness(data)
@@ -73,7 +73,7 @@ func alice(data string, port string, clock_cycles int) {
 	fmt.Printf("Alice output:  %s\n", out)
 }
 
-func bob(data string, addr string, port string, clock_cycles int) string {
+func YaoClient(data string, addr string, port string, clock_cycles int) string {
 	fmt.Printf("Bob here, running as client on address %s and port %s.\n", addr, port)
 	// Note the change of endianness for the data
 	data = ReverseEndianness(data)
@@ -94,13 +94,13 @@ func bob(data string, addr string, port string, clock_cycles int) string {
 		log.Fatal(err)
 	}
 	hexOut := ReverseEndianness(string(out))
-	fmt.Printf("Bob output:  %s\n", hexOut)
+	fmt.Printf("Client output:  %s\n", hexOut)
 
 	return hexOut
 }
 
 // This function allows to use Tinygarble to encrypt more than 128 bit in a secure way through the use of CTR mode
-func aesCTR(data string, addr string, startingPort string) {
+func AESCTR(data string, addr string, startingPort string) {
 	port, err := strconv.Atoi(startingPort)
 	if err != nil {
 		log.Fatal(err)
@@ -147,7 +147,7 @@ func aesCTR(data string, addr string, startingPort string) {
 	// secure encryption of the counter :
 	for i, r := range counter {
 		fmt.Println("Sending :", r)
-		ct := bob(r, addr, strconv.Itoa(port+i), 1)
+		ct := YaoClient(r, addr, strconv.Itoa(port+i), 1)
 		cipher = append(cipher, ct)
 	}
 
@@ -181,7 +181,7 @@ func xorStr(str1 string, str2 string) string {
 
 }
 
-func CTRserver(key string, port string) {
+func CTRServer(key string, port string) {
 	startingPort, err := strconv.Atoi(port)
 	if err != nil {
 		log.Fatal(err)
@@ -192,7 +192,7 @@ func CTRserver(key string, port string) {
 	// Bob to decide the next port to use and/or if it is finished ???
 	// However it'll be certainly easier to just timeout
 	for stopCondition {
-		alice(key, strconv.Itoa(startingPort), 1)
+		YaoServer(key, strconv.Itoa(startingPort), 1)
 		startingPort++
 	}
 }
@@ -249,13 +249,13 @@ func main() {
 	// we can continue, everything is initialized.
 	switch {
 	case *ctrPtr && *alicePtr:
-		CTRserver(*initPtr, *portsPtr)
+		CTRServer(*initPtr, *portsPtr)
 	case *ctrPtr && *bobPtr:
-		aesCTR(*initPtr, *addrPtr, *portsPtr)
+		AESCTR(*initPtr, *addrPtr, *portsPtr)
 	case *alicePtr:
-		alice(*initPtr, *portsPtr, *clockcyclesPtr)
+		YaoServer(*initPtr, *portsPtr, *clockcyclesPtr)
 	case *bobPtr:
-		bob(*initPtr, *addrPtr, *portsPtr, *clockcyclesPtr)
+		YaoClient(*initPtr, *addrPtr, *portsPtr, *clockcyclesPtr)
 	default: // if running neither as Alice, nor as Bob, there is a misuse
 		log.Fatal("Please run as server Alice (-a) first and then as Bob (-b). Use -h for help.")
 	}
