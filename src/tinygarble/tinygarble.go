@@ -2,11 +2,15 @@ package main
 
 import (
 	"bytes"
+	"crypto/rand"
+	"encoding/binary"
+	"encoding/hex"
 	"flag"
 	"fmt"
 	"log"
 	"os"
 	"os/exec"
+	"strconv"
 	"strings"
 )
 
@@ -69,7 +73,7 @@ func alice(data string, port string, clock_cycles int) {
 	fmt.Printf("Alice output:  %s\n", out)
 }
 
-func bob(data string, addr string, port string, clock_cycles int) {
+func bob(data string, addr string, port string, clock_cycles int) string {
 	fmt.Printf("Bob here, running as client on address %s and port %s.\n", addr, port)
 	// Note the change of endianness for the data
 	data = ReverseEndianness(data)
@@ -82,12 +86,115 @@ func bob(data string, addr string, port string, clock_cycles int) {
 	out, err := exec.Command(
 		tinyPath+"/bin/garbled_circuit/TinyGarble", "-b",
 		"-i", circuitPath,
-		inputArg, data[:32], "-s", addr, "-p", port, "--output_mode", "2").Output()
+		inputArg, data[:32], // this should be handled more properly
+		"-s", addr, "-p", port, "--output_mode", "2").Output()
 	// We specify the --output_mode arg to be "last_clock" only, since otherwise it would output each clock cycle intermediate states.
+
 	if err != nil {
 		log.Fatal(err)
 	}
-	fmt.Printf("Bob output:  %s\n", endian(string(out)))
+	hexOut := ReverseEndianness(string(out))
+	fmt.Printf("Bob output:  %s\n", hexOut)
+
+	return hexOut
+}
+
+// This function allows to use Tinygarble to encrypt more than 128 bit in a secure way through the use of CTR mode
+func aesCTR(data string, addr string, startingPort string) {
+	port, err := strconv.Atoi(startingPort)
+	if err != nil {
+		log.Fatal(err)
+	}
+	//lets splice our data into 32 char :
+	var toCrypt []string
+	var cipher []string
+	for i, _ := range data {
+		if i > 0 && (i+1)%32 == 0 {
+			toCrypt = append(toCrypt, data[i-31:i+1])
+		} else {
+			if i == len(data) {
+				toCrypt = append(toCrypt, data[len(data)-(len(data)+1)%32:len(data)])
+			}
+		}
+	}
+	// Counter generation:
+	ctrLength := 16
+	c := make([]byte, ctrLength)
+	_, err = rand.Read(c)
+	if err != nil {
+		log.Fatal(err)
+	}
+	b := c[8:]
+	var count uint64
+	buf := bytes.NewReader(b)
+	err = binary.Read(buf, binary.BigEndian, &count)
+	if err != nil {
+		fmt.Println("binary.Read failed:", err)
+	}
+	var counter []string
+	for i := 0; i < len(toCrypt); i++ {
+		count = count + uint64(1)
+		//fmt.Println("counter:",i,count)
+		bif := new(bytes.Buffer)
+		err = binary.Write(bif, binary.BigEndian, count)
+		if err != nil {
+			fmt.Println("binary.Write failed:", err)
+		}
+		b = append(c[:8], bif.Bytes()...)
+		counter = append(counter, hex.EncodeToString(b))
+		//fmt.Println("in Bytes :",counter)
+	}
+	// secure encryption of the counter :
+	for i, r := range counter {
+		fmt.Println("Sending :", r)
+		ct := bob(r, addr, strconv.Itoa(port+i), 1)
+		cipher = append(cipher, ct)
+	}
+
+	cipherText := make([]string, len(cipher))
+	for i, r := range toCrypt {
+		//fmt.Println("cipher", cipher[i], "plain", r)
+		cipherText[i] = xorStr(cipher[i], r)
+	}
+	fmt.Println("Ciphertext in CTR:", cipherText)
+
+}
+
+// Helper method to xor (hexadecimal) strings together
+func xorStr(str1 string, str2 string) string {
+	s1, e1 := hex.DecodeString(str1)
+	s2, e2 := hex.DecodeString(str2)
+	if e1 != nil || e2 != nil {
+		fmt.Println("Decoding from string failed:", e1, e2)
+	}
+	mini := len(s2)
+	if len(s1) < len(s2) {
+		mini = len(s1)
+	}
+
+	str := make([]byte, mini)
+	for i := 0; i < mini; i++ {
+		str[i] = s1[i] ^ s2[i]
+	}
+
+	return hex.EncodeToString(str)
+
+}
+
+func CTRserver(key string, port string) {
+	startingPort, err := strconv.Atoi(port)
+	if err != nil {
+		log.Fatal(err)
+	}
+	stopCondition := true
+	// TODO : find a good way to decide weither the server can stop or not
+	// maybe establish myself a TCP connexion in order to communicate with
+	// Bob to decide the next port to use and/or if it is finished ???
+	// However it'll be certainly easier to just timeout
+	for stopCondition {
+		alice(key, strconv.Itoa(startingPort), 1)
+		startingPort++
+	}
 }
 
 func main() {
@@ -108,6 +215,7 @@ func main() {
 
 	alicePtr := flag.Bool("a", false, "Run as server Alice")
 	bobPtr := flag.Bool("b", false, "Run as client Bob")
+	ctrPtr := flag.Bool("ctr", false, "Run using CTR mode and aes circuit in 1cc")
 
 	initPtr := flag.String("d", "00000000000000000000000000000000", "Init data")
 
@@ -121,14 +229,7 @@ func main() {
 	// We now initialize the TinyGarble root path
 	tinyPath = *rootPtr
 	if tinyPath == "" {
-		fmt.Printf("$TINYGARBLE not set. Assuming TinyGarble is located in $HOME/Code/TinyGarble\n")
-		home := os.Getenv("HOME")
-		if home != "" {
-			tinyPath = home + "/Code/TinyGarble"
-			// TODO: check if path exists (exec.Command does it, but it may be better to perform the check here)
-		} else {
-			log.Fatal("$HOME is not set. Please provide path to TinyGarble's root as argument or set $TINYGARBLE env var to its path.")
-		}
+		log.Fatal("$TINYGARBLE is not set. Please provide path to TinyGarble's root as argument or set $TINYGARBLE env var to its path.")
 	}
 
 	// We next initialize the circuit path based on the default value or on the user's input
@@ -147,6 +248,10 @@ func main() {
 
 	// we can continue, everything is initialized.
 	switch {
+	case *ctrPtr && *alicePtr:
+		CTRserver(*initPtr, *portsPtr)
+	case *ctrPtr && *bobPtr:
+		aesCTR(*initPtr, *addrPtr, *portsPtr)
 	case *alicePtr:
 		alice(*initPtr, *portsPtr, *clockcyclesPtr)
 	case *bobPtr:
