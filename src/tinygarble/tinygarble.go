@@ -1,4 +1,4 @@
-package tinygarble
+package main 
 
 import (
 	"bytes"
@@ -118,32 +118,38 @@ func AESCTR(data string, addr string, startingPort string) {
 		}
 	}
 	// Counter generation:
+    // counter size is 128 bits:
 	ctrLength := 16
-	c := make([]byte, ctrLength)
-	_, err = rand.Read(c)
+	counterByte := make([]byte, ctrLength)
+	_, err = rand.Read(counterByte)
 	if err != nil {
 		log.Fatal(err)
 	}
-	b := c[8:]
+    // Test with custom iv :
+	//counterByte, _  = hex.DecodeString("f0f1f2f3f4f5f6f7f8f9fafbfcfdfeff")
+
+    // we split the counter and will increment only the last 64 bits so we can use the int64 type without needing to use big int: this is okay since we won't encrypt exabytes of data
+	halfCounter := counterByte[8:]
 	var count uint64
-	buf := bytes.NewReader(b)
+	buf := bytes.NewReader(halfCounter)
 	err = binary.Read(buf, binary.BigEndian, &count)
 	if err != nil {
 		fmt.Println("binary.Read failed:", err)
 	}
 	var counter []string
 	for i := 0; i < len(toCrypt); i++ {
-		count = count + uint64(1)
 		//fmt.Println("counter:",i,count)
 		bif := new(bytes.Buffer)
 		err = binary.Write(bif, binary.BigEndian, count)
 		if err != nil {
 			fmt.Println("binary.Write failed:", err)
 		}
-		b = append(c[:8], bif.Bytes()...)
-		counter = append(counter, hex.EncodeToString(b))
+		halfCounter = append(counterByte[:8], bif.Bytes()...)
+		counter = append(counter, hex.EncodeToString(halfCounter))
 		//fmt.Println("in Bytes :",counter)
+		count = count + uint64(1)
 	}
+    fmt.Println("Counter used:")
 	// secure encryption of the counter :
 	for i, r := range counter {
 		fmt.Println("Sending :", r)
@@ -177,7 +183,7 @@ func xorStr(str1 string, str2 string) string {
 		str[i] = s1[i] ^ s2[i]
 	}
 
-	return hex.EncodeToString(str)
+	return strings.ToUpper(hex.EncodeToString(str))
 
 }
 
