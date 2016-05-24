@@ -17,19 +17,7 @@ import (
 var tinyPath string
 var circuitPath string
 
-// just an example on how to use Stdin, for reference. Coming straight from the Go Docs
-func ExampleCommand() {
-	cmd := exec.Command("tr", "a-z", "A-Z")
-	cmd.Stdin = strings.NewReader("some input")
-	var out bytes.Buffer
-	cmd.Stdout = &out
-	err := cmd.Run()
-	if err != nil {
-		log.Fatal(err)
-	}
-	fmt.Printf("in all caps: %q\n", out.String())
-}
-
+// A utilitary function to reverse endianness from little/big to big/little endian for a string of hex values
 func ReverseEndianness(data string) string {
 	//initalizing the return value as an empty string
 	ans := ""
@@ -37,12 +25,12 @@ func ReverseEndianness(data string) string {
 	//trimming since there are easily \n in cmd lines outputs.
 	data = strings.TrimSpace(data)
 	if len(data)%2 != 0 {
-		log.Printf("You can't change the endianness of a string whose length isn't a multiple of 2. Please check your data.")
+		log.Fatal("You can't change the endianness of a string whose length isn't a multiple of 2. Please check your data.")
 		return data
 	}
+	//if the data isn't in hex format, i.e. if it hasn't an even number of char, then the programmer made some mistake.
 
-	//if the data isn't in hex format, i.e. if it hasn't an even number of char, then the programmer made some mistake... Don't need to check if %2==0
-	for len(data) >= 2 {
+    for len(data) >= 2 {
 		ans += data[len(data)-2:]
 		//fmt.Printf(ans+"\n")
 		data = data[:len(data)-2]
@@ -100,7 +88,7 @@ func YaoClient(data string, addr string, port string, clock_cycles int) string {
 }
 
 // This function allows to use Tinygarble to encrypt more than 128 bit in a secure way through the use of CTR mode
-func AESCTR(data string, addr string, startingPort string) {
+func AESCTR(data string, addr string, startingPort string, iv string) {
 	port, err := strconv.Atoi(startingPort)
 	if err != nil {
 		log.Fatal(err)
@@ -126,8 +114,9 @@ func AESCTR(data string, addr string, startingPort string) {
 		log.Fatal(err)
 	}
     // Test with custom iv :
-	//counterByte, _  = hex.DecodeString("f0f1f2f3f4f5f6f7f8f9fafbfcfdfeff")
-
+	if iv != "" && len(iv)==32 {
+        counterByte, _  = hex.DecodeString(iv)
+    }
     // we split the counter and will increment only the last 64 bits so we can use the int64 type without needing to use big int: this is okay since we won't encrypt exabytes of data
 	halfCounter := counterByte[8:]
 	var count uint64
@@ -187,19 +176,19 @@ func xorStr(str1 string, str2 string) string {
 
 }
 
-func CTRServer(key string, port string) {
+func CTRServer(key string, port string, rounds int) {
 	startingPort, err := strconv.Atoi(port)
 	if err != nil {
 		log.Fatal(err)
 	}
-	stopCondition := true
 	// TODO : find a good way to decide weither the server can stop or not
 	// maybe establish myself a TCP connexion in order to communicate with
 	// Bob to decide the next port to use and/or if it is finished ???
 	// However it'll be certainly easier to just timeout
-	for stopCondition {
+	for rounds >= 0 {
 		YaoServer(key, strconv.Itoa(startingPort), 1)
 		startingPort++
+        rounds--
 	}
 }
 
@@ -255,9 +244,9 @@ func main() {
 	// we can continue, everything is initialized.
 	switch {
 	case *ctrPtr && *alicePtr:
-		CTRServer(*initPtr, *portsPtr)
+		CTRServer(*initPtr, *portsPtr,0)
 	case *ctrPtr && *bobPtr:
-		AESCTR(*initPtr, *addrPtr, *portsPtr)
+		AESCTR(*initPtr, *addrPtr, *portsPtr, "")
 	case *alicePtr:
 		YaoServer(*initPtr, *portsPtr, *clockcyclesPtr)
 	case *bobPtr:
