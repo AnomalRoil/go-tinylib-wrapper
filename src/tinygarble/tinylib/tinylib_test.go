@@ -1,8 +1,19 @@
-package main
+package tinylib
 
 import (
+	"encoding/hex"
 	"testing"
 )
+
+func TestIvGeneration(t *testing.T) {
+	var test []byte
+	test = ivGeneration(string("12345678901234567890123456789012"))
+	ans := hex.EncodeToString(test)
+	if ans != "12345678901234567890123456789012" {
+		t.Error("Expected 12345678901234567890123456789012, got ", ans)
+	}
+	// Further testing of the IV generation without custom iv is not necessary: the random generator used should be tested by their creator, not here.
+}
 
 // Basic test to try out the conversion from Little/Big to Big/Little Endian
 func TestReverseEndianness(t *testing.T) {
@@ -37,7 +48,7 @@ func TestXorStr(t *testing.T) {
 	}
 }
 
-// Test vector for AES-CTR 128:  
+// Test vector for AES-CTR 128:
 // IV : f0f1f2f3f4f5f6f7f8f9fafbfcfdfeff
 // Encryption Key : 2b7e151628aed2a6abf7158809cf4f3c
 //
