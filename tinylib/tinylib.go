@@ -14,13 +14,11 @@ import (
 
 var tinyPath string
 var circuitPath string
+var clockCycles int
 
+// Be careful, you have to first set the TinyGarble Path and the Circuit Path to the AES-128 circuit, in order to use this
 // This function allows to use TinyGarble to encrypt more than 128 bits of data using CBC mode with ciphertext stealing (to avoid padding)
-func AESCBC(data string, addr string, startingPort string, iv string) ([]string, string) {
-	port, err := strconv.Atoi(startingPort)
-	if err != nil {
-		log.Fatal(err)
-	}
+func AESCBC(data string, addr string, port int, iv string) ([]string, string) {
 
 	var toCrypt []string
 	var cipher []string
@@ -44,7 +42,7 @@ func AESCBC(data string, addr string, startingPort string, iv string) ([]string,
 		}
 		plain := xorStr(r, xoring)
 		fmt.Println("Sending :", plain)
-		ct := YaoClient(plain, addr, strconv.Itoa(port+i), 1)
+		ct := YaoClient(plain, addr, port+i)
 		cipher = append(cipher, ct)
 		xoring = ct
 		// ciphertext stealing in action:
@@ -54,18 +52,14 @@ func AESCBC(data string, addr string, startingPort string, iv string) ([]string,
 		}
 	}
 
-	fmt.Println("Ciphertext in CBC:", cipher)
-
-	return cipher, iv
+	return cipher, hex.EncodeToString(ivUsed)
 }
 
+// Be careful, you have to first set the TinyGarble Path and the Circuit Path to the AES-128 circuit, in order to use this
 // This function allows to use Tinygarble to encrypt more than 128 bit in a secure way through the use of CTR mode
-func AESCTR(data string, addr string, startingPort string, iv string) ([]string, string) {
+func AESCTR(data string, addr string, port int, iv string) ([]string, string) {
 	fmt.Println("AES CTR started")
-	port, err := strconv.Atoi(startingPort)
-	if err != nil {
-		log.Fatal(err)
-	}
+
 	//lets splice our data into 32 char :
 	var toCrypt []string
 	var cipher []string
@@ -80,7 +74,7 @@ func AESCTR(data string, addr string, startingPort string, iv string) ([]string,
 	var count uint64
 	// we set count to be equal to the value stored as bytes in the halfCounter
 	buf := bytes.NewReader(halfCounter)
-	err = binary.Read(buf, binary.BigEndian, &count)
+	err := binary.Read(buf, binary.BigEndian, &count)
 	if err != nil {
 		fmt.Println("binary.Read failed:", err)
 	}
@@ -103,7 +97,7 @@ func AESCTR(data string, addr string, startingPort string, iv string) ([]string,
 	// secure encryption of the counter :
 	for i, r := range counter {
 		fmt.Println("Sending :", r)
-		ct := YaoClient(r, addr, strconv.Itoa(port+i), 1)
+		ct := YaoClient(r, addr, port+i)
 		cipher = append(cipher, ct)
 	}
 
@@ -111,21 +105,19 @@ func AESCTR(data string, addr string, startingPort string, iv string) ([]string,
 	for i, r := range toCrypt {
 		cipherText[i] = xorStr(cipher[i], r)
 	}
-	fmt.Println("Ciphertext in CTR:", cipherText)
-	return cipherText, iv
+
+	return cipherText, hex.EncodeToString(counterByte)
 }
 
-func CTRServer(key string, port string, rounds int) {
-	startingPort, err := strconv.Atoi(port)
-	if err != nil {
-		log.Fatal(err)
-	}
+// Be careful, you have to first set the TinyGarble Path and the Circuit Path to the AES-128 circuit, in order to use this
+// This function allows to run an AES server a given number of time "rounds", incrementing the port number each time to avoid problems with the TIME_WAIT
+func AESServer(key string, startingPort int, rounds int) {
 	// TODO : find a good way to decide weither the server can stop or not
 	// maybe establish myself a TCP connexion in order to communicate with
 	// Bob to decide the next port to use and/or if it is finished ???
 	// However it'll be certainly easier to just timeout
 	for rounds > 0 || rounds < 0 { // This allows unending server cycles
-		YaoServer(key, strconv.Itoa(startingPort), 1)
+		YaoServer(key, startingPort)
 		startingPort++
 		rounds--
 		// This terminates when rounds == 0
@@ -176,9 +168,10 @@ func ReverseEndianness(data string) string {
 }
 
 // An utilitary function to set the path to the relevant component in order to be able to use TinyGarble
-func SetTinyPaths(tiPath string, ciPath string) {
+func SetCircuit(tiPath string, ciPath string, clCycles int) {
 	tinyPath = tiPath
 	circuitPath = ciPath
+	clockCycles = clCycles
 }
 
 // An utilitary function to easily split the input data into a slice of 32 char blocks as string (or less for the last block)
@@ -215,48 +208,46 @@ func xorStr(str1 string, str2 string) string {
 }
 
 // The wrapper function for the TinyGarble client option
-func YaoClient(data string, addr string, port string, clock_cycles int) string {
-	fmt.Printf("Bob here, running as client on address %s and port %s.\n", addr, port)
+func YaoClient(data string, addr string, port int) string {
+	fmt.Printf("Client running on address %s and port %d.\n", addr, port)
 	// Note the change of endianness for the data, since TinyGarble uses little endian
 	data = ReverseEndianness(data)
 
 	inputArg := "--input"
-	if clock_cycles > 1 {
-		inputArg = "--init"
+	if clockCycles > 1 {
+		inputArg = "--clock_cycles " + strconv.Itoa(clockCycles) + " --init"
 	}
 
 	out, err := exec.Command(
 		tinyPath+"/bin/garbled_circuit/TinyGarble", "-b",
 		"-i", circuitPath,
 		inputArg, data[:32], // this should be handled more properly
-		"-s", addr, "-p", port, "--output_mode", "2").Output()
+		"-s", addr, "-p", strconv.Itoa(port), "--output_mode", "2").Output()
 	// We specify the --output_mode arg to be "last_clock" only, since otherwise it would output each clock cycle intermediate states when using multiple cycles circuits
 
 	if err != nil {
 		log.Fatal(err)
 	}
 	hexOut := ReverseEndianness(string(out))
-	fmt.Printf("Client output:  %s\n", hexOut)
 
 	return hexOut
 }
 
 // A wrapper function for the TinyGarble with server (alice) argument set
-func YaoServer(data string, port string, clock_cycles int) {
-	fmt.Printf("Alice here, running as server on port %s.\n", port)
+func YaoServer(data string, port int) {
+	fmt.Printf("Server running on port %d.\n", port)
 	// Note the change of endianness for the data, since TinyGarble uses little endian
 	data = ReverseEndianness(data)
 
 	inputArg := "--input"
-	if clock_cycles > 1 {
-		inputArg = "--init"
+	if clockCycles > 1 {
+		inputArg = "--clock_cycles " + strconv.Itoa(clockCycles) + " --init"
 	}
 
-	fmt.Println(tinyPath, circuitPath, inputArg, data, port)
 	out, err := exec.Command(
 		tinyPath+"/bin/garbled_circuit/TinyGarble", "-a",
 		"-i", circuitPath,
-		inputArg, data[:32], "-p", port).Output()
+		inputArg, data[:32], "-p", strconv.Itoa(port)).Output()
 
 	if err != nil {
 		log.Fatal(err)

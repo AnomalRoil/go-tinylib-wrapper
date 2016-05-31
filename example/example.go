@@ -27,7 +27,7 @@ func main() {
 	circuitPathPtr := flag.String("c", "$TINYGARBLE/scd/netlists", "location of the circuit root directory. Default : $TINYGARBLE/scd/netlists")
 	clockcyclesPtr := flag.Int("cc", 1, "number of clock cycles needed for this circuit, usually 1, usually indicated at the end of the circuit name, sha3_24cc needs 24 clock cycles for example")
 
-	portsPtr := flag.String("p", "1234", "Specify a starting port")
+	portsPtr := flag.Int("p", 1234, "Specify a starting port")
 	addrPtr := flag.String("s", "127.0.0.1", "Specify a server address for Bob to connect.")
 
 	alicePtr := flag.Bool("a", false, "Run as server Alice")
@@ -57,7 +57,7 @@ func main() {
 	}
 
 	circuitPath += *circuitPtr
-	tinylib.SetTinyPaths(tinyPath, circuitPath)
+	tinylib.SetCircuit(tinyPath, circuitPath, *clockcyclesPtr)
 
 	// sanity check for the input
 	if len(*initPtr) < 32 {
@@ -68,15 +68,16 @@ func main() {
 	switch {
 	case *ctrPtr && *alicePtr:
 		fmt.Println("Launching AES CTR server with key:", *initPtr)
-		tinylib.CTRServer(*initPtr, *portsPtr, -1)
+		tinylib.AESServer(*initPtr, *portsPtr, -1)
 		fmt.Println("AES Server terminated")
 	case *ctrPtr && *bobPtr:
-		_, ivUsed := tinylib.AESCTR(*initPtr, *addrPtr, *portsPtr, "")
-		fmt.Println("Terminated after using as iv:", ivUsed)
+		cipher, ivUsed := tinylib.AESCTR(*initPtr, *addrPtr, *portsPtr, "")
+        fmt.Println("Data encrypted as:", cipher)
+		fmt.Println("and using as iv:", ivUsed)
 	case *alicePtr:
-		tinylib.YaoServer(*initPtr, *portsPtr, *clockcyclesPtr)
+		tinylib.YaoServer(*initPtr, *portsPtr)
 	case *bobPtr:
-		tinylib.YaoClient(*initPtr, *addrPtr, *portsPtr, *clockcyclesPtr)
+		tinylib.YaoClient(*initPtr, *addrPtr, *portsPtr)
 	default: // if running neither as Alice, nor as Bob, there is a misuse
 		log.Fatal("Please run as server Alice (-a) first and then as Bob (-b). Use -h for help.")
 	}
