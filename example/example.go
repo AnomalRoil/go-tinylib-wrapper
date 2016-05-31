@@ -5,8 +5,8 @@ import (
 	"fmt"
 	"log"
 	"os"
+	"projet-pa-yao/code/tinylib"
 	"strings"
-	"tinygarble/tinylib"
 )
 
 var tinyPath string

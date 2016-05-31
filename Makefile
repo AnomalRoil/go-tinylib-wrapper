@@ -1,5 +1,5 @@
-EXEC=tinygarble
-SOURCE=main.go
+EXEC=./bin/tinygarble
+SOURCE=./example
 TLIB=./tinylib
 
 all:        ${SOURCE} 
@@ -8,13 +8,15 @@ lib:
 		go build ${TLIB}
 fmt:        ${SOURCE}
 	    gofmt -w ${SOURCE}
+		gofmt -w ${TLIB}
+
+.PHONY:     install clean test
+
 test:
-		go test ${TLIB}
-		go test
-.PHONY:     install clean
+		go test ./...
 
 install:
-	    go install ./...
+	    go install ./... 
 
 clean:
 	    rm -rf $(EXEC)
