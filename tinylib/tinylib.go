@@ -15,6 +15,7 @@ import (
 var tinyPath string
 var circuitPath string
 var clockCycles int
+var forceInput bool
 
 // Be careful, you have to first set the TinyGarble Path and the Circuit Path to the AES-128 circuit, in order to use this
 // This function allows to use TinyGarble to encrypt more than 128 bits of data using CBC mode with ciphertext stealing (to avoid padding)
@@ -40,9 +41,11 @@ func AESCBC(data string, addr string, port int, iv string) ([]string, string) {
 			r += strings.Repeat("0", 32-dataLen)
 			fmt.Println("Using ciphertext stealing on", xoring, r, dataLen)
 		}
-		plain := xorStr(r, xoring)
+		// We have to reverse endianness since TinyGrable AES uses little endian
+		plain := ReverseEndianness(xorStr(r, xoring))
 		fmt.Println("Sending :", plain)
-		ct := YaoClient(plain, addr, port+i)
+		// We have to reverse endianness from the output to work again in big endian
+		ct := ReverseEndianness(YaoClient(plain, addr, port+i))
 		cipher = append(cipher, ct)
 		xoring = ct
 		// ciphertext stealing in action:
@@ -59,6 +62,9 @@ func AESCBC(data string, addr string, port int, iv string) ([]string, string) {
 // This function allows to use Tinygarble to encrypt more than 128 bit in a secure way through the use of CTR mode
 func AESCTR(data string, addr string, port int, iv string) ([]string, string) {
 	fmt.Println("AES CTR started")
+
+	// Note the change of endianness for the data, since TinyGarble uses little endian
+	data = ReverseEndianness(data)
 
 	//lets splice our data into 32 char :
 	var toCrypt []string
@@ -98,7 +104,7 @@ func AESCTR(data string, addr string, port int, iv string) ([]string, string) {
 	for i, r := range counter {
 		fmt.Println("Sending :", r)
 		ct := YaoClient(r, addr, port+i)
-		cipher = append(cipher, ct)
+		cipher = append(cipher, ReverseEndianness(ct))
 	}
 
 	cipherText := make([]string, len(cipher))
@@ -112,6 +118,8 @@ func AESCTR(data string, addr string, port int, iv string) ([]string, string) {
 // Be careful, you have to first set the TinyGarble Path and the Circuit Path to the AES-128 circuit, in order to use this
 // This function allows to run an AES server a given number of time "rounds", incrementing the port number each time to avoid problems with the TIME_WAIT
 func AESServer(key string, startingPort int, rounds int) {
+	// Note the change of endianness for the data, since TinyGarble uses little endian
+	key = ReverseEndianness(key)
 	// TODO : find a good way to decide weither the server can stop or not
 	// maybe establish myself a TCP connexion in order to communicate with
 	// Bob to decide the next port to use and/or if it is finished ???
@@ -163,15 +171,16 @@ func ReverseEndianness(data string) string {
 		ans += data[len(data)-2:]
 		data = data[:len(data)-2]
 	}
-
+    fmt.Println("reversed:",ans)
 	return ans
 }
 
 // An utilitary function to set the path to the relevant component in order to be able to use TinyGarble
-func SetCircuit(tiPath string, ciPath string, clCycles int) {
+func SetCircuit(tiPath string, ciPath string, clCycles int, uInput bool) {
 	tinyPath = tiPath
 	circuitPath = ciPath
 	clockCycles = clCycles
+    forceInput = uInput
 }
 
 // An utilitary function to easily split the input data into a slice of 32 char blocks as string (or less for the last block)
@@ -210,44 +219,66 @@ func xorStr(str1 string, str2 string) string {
 // The wrapper function for the TinyGarble client option
 func YaoClient(data string, addr string, port int) string {
 	fmt.Printf("Client running on address %s and port %d.\n", addr, port)
-	// Note the change of endianness for the data, since TinyGarble uses little endian
-	data = ReverseEndianness(data)
 
-	inputArg := "--input"
+	// we will use the following arguments when we run the client :
+	var yaoArgs []string
+	yaoArgs = []string{"-b", "-i", circuitPath,
+		"-s", addr, "-p", strconv.Itoa(port),
+		"--output_mode", "2"}
+	// We specify the --output_mode arg to be "last_clock", aka 2, only, since otherwise it would output each clock cycle intermediate states when using multiple cycles circuits
+
+	var inputArg []string
 	if clockCycles > 1 {
-		inputArg = "--clock_cycles " + strconv.Itoa(clockCycles) + " --init"
+		inputArg = []string{"--clock_cycle ", strconv.Itoa(clockCycles)}
+	} else {
+            forceInput = true
+    }
+
+	if forceInput{
+		inputArg = append(inputArg, " --input", data)
+	} else {
+		inputArg = append(inputArg, " --init", data)
 	}
 
-	out, err := exec.Command(
-		tinyPath+"/bin/garbled_circuit/TinyGarble", "-b",
-		"-i", circuitPath,
-		inputArg, data[:32], // this should be handled more properly
-		"-s", addr, "-p", strconv.Itoa(port), "--output_mode", "2").Output()
-	// We specify the --output_mode arg to be "last_clock" only, since otherwise it would output each clock cycle intermediate states when using multiple cycles circuits
+    yaoArgs = append(yaoArgs, inputArg...)
 
+	fmt.Println(yaoArgs)
+    cmd := exec.Command(tinyPath+"/bin/garbled_circuit/TinyGarble", yaoArgs...)
+    fmt.Println("Command executed:",cmd)
+	out, err := cmd.Output()
+    fmt.Println("output client:",string(out))
 	if err != nil {
 		log.Fatal(err)
 	}
-	hexOut := ReverseEndianness(string(out))
 
-	return hexOut
+	return string(out)
 }
 
 // A wrapper function for the TinyGarble with server (alice) argument set
 func YaoServer(data string, port int) {
 	fmt.Printf("Server running on port %d.\n", port)
-	// Note the change of endianness for the data, since TinyGarble uses little endian
-	data = ReverseEndianness(data)
 
-	inputArg := "--input"
+	var yaoArgs []string
+	yaoArgs = []string{"-a", "-i", circuitPath,
+		 "-p", strconv.Itoa(port)}
+
+	var inputArg []string
 	if clockCycles > 1 {
-		inputArg = "--clock_cycles " + strconv.Itoa(clockCycles) + " --init"
+		inputArg = []string{"--clock_cycle ", strconv.Itoa(clockCycles)}
+	} else {
+            forceInput = true
+    }
+
+	if forceInput{
+		inputArg = append(inputArg, " --input", data)
+	} else {
+		inputArg = append(inputArg, " --init", data)
 	}
 
-	out, err := exec.Command(
-		tinyPath+"/bin/garbled_circuit/TinyGarble", "-a",
-		"-i", circuitPath,
-		inputArg, data[:32], "-p", strconv.Itoa(port)).Output()
+	yaoArgs = append(yaoArgs, inputArg...)
+
+    out, err := exec.Command(
+		tinyPath+"/bin/garbled_circuit/TinyGarble", yaoArgs...).Output()
 
 	if err != nil {
 		log.Fatal(err)
