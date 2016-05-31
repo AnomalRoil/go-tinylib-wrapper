@@ -20,12 +20,12 @@ func main() {
 		log.Fatal("No argument, please run as server Alice (-a) first and then as Bob (-b). Use -h for help.")
 	}
 
-    // To specify the location of the tinygarble executable, the circuit used and the clock cycles, as well as wether this circuit enforce the use of the --input flag if it has more than 1 clock cycles
+	// To specify the location of the tinygarble executable, the circuit used and the clock cycles, as well as wether this circuit enforce the use of the --input flag if it has more than 1 clock cycles
 	rootPtr := flag.String("r", os.Getenv("TINYGARBLE"), "the TinyGarble root directory path, default to $TINYGARBLE if var set, writes $TINYGARBLE if changed")
 	circuitPtr := flag.String("n", "aes_1cc.scd", "name of the circuit file located in the circuit root directory")
 	circuitPathPtr := flag.String("c", "$TINYGARBLE/scd/netlists", "location of the circuit root directory.")
 	clockcyclesPtr := flag.Int("cc", 1, "number of clock cycles needed for this circuit, usually 1, usually indicated at the end of the circuit name, sha3_24cc needs 24 clock cycles for example")
-    forceInputPtr:= flag.Bool("input", false, "some circuits are using more than 1 clock cycles but don't use the init flag in TinyGarble. This allows to enforce the use of the --input flag instead of the --init one.")
+	forceInputPtr := flag.Bool("input", false, "some circuits are using more than 1 clock cycles but don't use the init flag in TinyGarble. This allows to enforce the use of the --input flag instead of the --init one.")
 
 	portsPtr := flag.Int("p", 1234, "Specify a starting port")
 	addrPtr := flag.String("s", "127.0.0.1", "Specify a server address for Bob to connect.")
@@ -34,7 +34,7 @@ func main() {
 	bobPtr := flag.Bool("b", false, "run as client Bob")
 	ctrPtr := flag.Bool("ctr", false, "run using CTR mode and aes circuit in 1cc")
 	cbcPtr := flag.Bool("cbc", false, "run using CBC mode and aes circuit in 1cc")
-
+	customIv := flag.String("iv", "", "allows to specify a custom IV for the CTR mode, only for testing : using custom IV may be dangerous, since CTR is sensible to randomness reuses")
 	initPtr := flag.String("d", "00000000000000000000000000000000", "Init data")
 	flag.Parse()
 
@@ -71,13 +71,13 @@ func main() {
 		tinylib.AESServer(*initPtr, *portsPtr, -1)
 		fmt.Println("AES Server terminated")
 	case *ctrPtr && *bobPtr:
-		cipher, ivUsed := tinylib.AESCTR(*initPtr, *addrPtr, *portsPtr, "")
+		cipher, ivUsed := tinylib.AESCTR(*initPtr, *addrPtr, *portsPtr, *customIv)
 		fmt.Println("Data encrypted in CTR mode as:", cipher)
-		fmt.Println("and using as iv:", ivUsed)
+		fmt.Println("with", ivUsed, "as an iv.")
 	case *cbcPtr && *bobPtr:
 		cipher, ivUsed := tinylib.AESCBC(*initPtr, *addrPtr, *portsPtr, "")
 		fmt.Println("Data encrypted in CBC mode as:", cipher)
-		fmt.Println("and using as iv:", ivUsed)
+		fmt.Println("with", ivUsed, "as an iv.")
 	case *alicePtr:
 		tinylib.YaoServer(*initPtr, *portsPtr)
 	case *bobPtr:
