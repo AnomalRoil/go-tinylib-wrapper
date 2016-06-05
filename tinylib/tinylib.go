@@ -20,13 +20,13 @@ var forceInput bool
 // Be careful, you have to first set the TinyGarble Path and the Circuit Path to the AES-128 circuit, in order to use this
 // This function allows to use TinyGarble to encrypt more than 128 bits of data using CBC mode with ciphertext stealing (to avoid padding)
 func AESCBC(data string, addr string, port int, iv string) ([]string, string) {
+	fmt.Println("AES CBC started")
 
 	var toCrypt []string
 	var cipher []string
 	// splitting the data into 128 bits blocks or less for the last one.
 	// We are using ciphertext stealing to avoid padding
 	toCrypt = splitData(data)
-    fmt.Println("tocrypt:",toCrypt, "\nData:", data )
 	ivUsed := ivGeneration(iv)
 	// We can use the IV to do ciphertext stealing in case of <128 bits data, but this will be implemented later
 	if len(toCrypt[0]) < 16 {
@@ -37,11 +37,9 @@ func AESCBC(data string, addr string, port int, iv string) ([]string, string) {
 	// secure encryption of the data :
 	for i, r := range toCrypt {
 		dataLen := len(r)
-        fmt.Println("r",r, len(toCrypt))
 		// if we use ciphertext stealing we need to pad the data with 0's
 		if i == len(toCrypt)-1 && dataLen < 32 {
 			r += strings.Repeat("0", 32-dataLen)
-			fmt.Println("Using ciphertext stealing on", xoring, r, dataLen)
 		}
 		// We have to reverse endianness since TinyGrable AES uses little endian
 		plain := ReverseEndianness(xorStr(r, xoring))
@@ -51,7 +49,6 @@ func AESCBC(data string, addr string, port int, iv string) ([]string, string) {
 		cipher = append(cipher, ct)
 		// ciphertext stealing in action:
 		if i == len(toCrypt)-1 && dataLen < 32 {
-            fmt.Println("Using ciphertext stealing")
 			stolenCiph := xoring[:dataLen]
 			cipher = append(cipher[:len(cipher)-2], ct, stolenCiph)
 		}
@@ -82,7 +79,7 @@ func AESCTR(data string, addr string, port int, iv string) ([]string, string) {
 	buf := bytes.NewReader(halfCounter)
 	err := binary.Read(buf, binary.BigEndian, &count)
 	if err != nil {
-		fmt.Println("binary.Read failed:", err)
+		log.Fatal("binary.Read failed:", err)
 	}
 	var counter []string
 	for i := 0; i < len(toCrypt); i++ {
@@ -90,7 +87,7 @@ func AESCTR(data string, addr string, port int, iv string) ([]string, string) {
 		// we translate the counter into bytes (from int64)
 		err = binary.Write(bif, binary.BigEndian, count)
 		if err != nil {
-			fmt.Println("binary.Write failed:", err)
+			log.Fatal("binary.Write failed:", err)
 		}
 		// we append the lower 64 bits of the counter with the upper 64 bits
 		halfCounter = append(counterByte[:8], bif.Bytes()...)
@@ -188,6 +185,7 @@ func splitData(data string) []string {
 		if i > 0 && (i+1)%32 == 0 {
 			toCrypt = append(toCrypt, data[i-31:i+1])
 		} else {
+                // using len-1 because the index begin at 0, not at 1
 			if i == len(data)-1 {
 				toCrypt = append(toCrypt, data[len(data)-(len(data))%32:len(data)])
 			}
@@ -201,7 +199,7 @@ func xorStr(str1 string, str2 string) string {
 	s1, e1 := hex.DecodeString(str1)
 	s2, e2 := hex.DecodeString(str2)
 	if e1 != nil || e2 != nil {
-		fmt.Println("Decoding from string failed:", e1, e2)
+		log.Fatal("Decoding from string failed:", e1, e2)
 	}
 	mini := len(s2)
 	if len(s1) < len(s2) {
