@@ -2,12 +2,12 @@ package tinylib
 
 import (
 	"encoding/hex"
-    "fmt"
-    "math/rand"
-    "os"
-    "strings"
-    "time"
+	"fmt"
+	"math/rand"
+	"os"
+	"strings"
 	"testing"
+	"time"
 )
 
 func TestIvGeneration(t *testing.T) {
@@ -54,109 +54,109 @@ func TestXorStr(t *testing.T) {
 }
 
 func TestAESServ(t *testing.T) {
-    fmt.Println("Starting AES CTR mode test")
-    path :=os.Getenv("TINYGARBLE")
-    if path == "" {
-        t.Skip("skipping test; $TINYGARBLE not set")
-    }
+	fmt.Println("Starting AES CTR mode test")
+	path := os.Getenv("TINYGARBLE")
+	if path == "" {
+		t.Skip("skipping test; $TINYGARBLE not set")
+	}
 
-    key := "2b7e151628aed2a6abf7158809cf4f3c"
+	key := "2b7e151628aed2a6abf7158809cf4f3c"
 
-    SetCircuit(path,path+"/scd/netlists/aes_1cc.scd",1,false)
-    s1 := rand.NewSource(time.Now().UnixNano())
-    r1 := rand.New(s1)
-    port := r1.Intn(5000)
-    fmt.Println("Using port :", 49152+port)
-    fmt.Println("Note that this test uses randomly 4 consequent ports in the range 49152-54152. So it may fail if one of those ports is not usable. You may have to rerun it if it fails with an 'exit status 255'")
-    go AESServer(key,49152+port,4)
-    time.Sleep(100*time.Millisecond)
+	SetCircuit(path, path+"/scd/netlists/aes_1cc.scd", 1, false)
+	s1 := rand.NewSource(time.Now().UnixNano())
+	r1 := rand.New(s1)
+	port := r1.Intn(5000)
+	fmt.Println("Using port :", 49152+port)
+	fmt.Println("Note that this test uses randomly 4 consequent ports in the range 49152-54152. So it may fail if one of those ports is not usable. You may have to rerun it if it fails with an 'exit status 255'")
+	go AESServer(key, 49152+port, 4)
+	time.Sleep(100 * time.Millisecond)
 
-    fmt.Println("Continuing test with the client")
+	fmt.Println("Continuing test with the client")
 
-    iv := "f0f1f2f3f4f5f6f7f8f9fafbfcfdfeff"
-    data := "6bc1bee22e409f96e93d7e117393172aae2d8a571e03ac9c9eb76fac45af8e5130c81c46a35ce411e5fbc1191a0a52eff69f2445df4f9b17ad2b417be66c3710"
-    awaitedResult := "874d6191b620e3261bef6864990db6ce9806f66b7970fdff8617187bb9fffdff5ae4df3edbd5d35e5b4f09020db03eab1e031dda2fbe03d1792170a0f3009cee"
+	iv := "f0f1f2f3f4f5f6f7f8f9fafbfcfdfeff"
+	data := "6bc1bee22e409f96e93d7e117393172aae2d8a571e03ac9c9eb76fac45af8e5130c81c46a35ce411e5fbc1191a0a52eff69f2445df4f9b17ad2b417be66c3710"
+	awaitedResult := "874d6191b620e3261bef6864990db6ce9806f66b7970fdff8617187bb9fffdff5ae4df3edbd5d35e5b4f09020db03eab1e031dda2fbe03d1792170a0f3009cee"
 
-    ans, _ := AESCTR(data,"127.0.0.1",49152+port,iv)
+	ans, _ := AESCTR(data, "127.0.0.1", 49152+port, iv)
 
-    if strings.Join(ans,"") != strings.ToUpper(awaitedResult) {
+	if strings.Join(ans, "") != strings.ToUpper(awaitedResult) {
 		t.Error("Expected 874d6191b620e3261bef6864990db6ce9806f66b7970fdff8617187bb9fffdff5ae4df3edbd5d35e5b4f09020db03eab1e031dda2fbe03d1792170a0f3009cee, got ", ans)
-    } else {
-        fmt.Println("AES CTR Test passed")
-    }
+	} else {
+		fmt.Println("AES CTR Test passed")
+	}
 }
 
 func TestAESCBC(t *testing.T) {
-    fmt.Println("Testing the AES CBC mode, first starting the server :")
-    path :=os.Getenv("TINYGARBLE")
-    if path == "" {
-        t.Skip("skipping test; $TINYGARBLE not set")
-    }
+	fmt.Println("Testing the AES CBC mode, first starting the server :")
+	path := os.Getenv("TINYGARBLE")
+	if path == "" {
+		t.Skip("skipping test; $TINYGARBLE not set")
+	}
 
-    key := "636869636b656e207465726979616b69"
+	key := "636869636b656e207465726979616b69"
 
-    SetCircuit(path,path+"/scd/netlists/aes_1cc.scd",1,false)
-    s1 := rand.NewSource(time.Now().UnixNano())
-    r1 := rand.New(s1)
-    port := r1.Intn(1000)
-    fmt.Println("Using port :",49152+port)
-    fmt.Println("Note that this test assumes the localhost range 49152-50152 to be usable.",
-    "So it may fail if one of those port is not usable. You may have to rerun it if it fails with an 'exit status 255'")
-    go AESServer(key,49152+port,3)
-    time.Sleep(time.Millisecond*100)
+	SetCircuit(path, path+"/scd/netlists/aes_1cc.scd", 1, false)
+	s1 := rand.NewSource(time.Now().UnixNano())
+	r1 := rand.New(s1)
+	port := r1.Intn(1000)
+	fmt.Println("Using port :", 49152+port)
+	fmt.Println("Note that this test assumes the localhost range 49152-50152 to be usable.",
+		"So it may fail if one of those port is not usable. You may have to rerun it if it fails with an 'exit status 255'")
+	go AESServer(key, 49152+port, 3)
+	time.Sleep(time.Millisecond * 100)
 
-    iv   := "00000000000000000000000000000000"
-    data := "4920776f756c64206c696b65207468652047656e6572616c20476175277320436869636b656e2c20706c656173652c"
-    awaitedResult := strings.ToUpper("97687268d6ecccc0c07b25e25ecfe584b3fffd940c16a18c1b5549d2f838029e39312523a78662d5be7fcbcc98ebf5")
+	iv := "00000000000000000000000000000000"
+	data := "4920776f756c64206c696b65207468652047656e6572616c20476175277320436869636b656e2c20706c656173652c"
+	awaitedResult := strings.ToUpper("97687268d6ecccc0c07b25e25ecfe584b3fffd940c16a18c1b5549d2f838029e39312523a78662d5be7fcbcc98ebf5")
 
-    ans, _ := AESCBC(data,"127.0.0.1",49152+port,iv)
-    if strings.Join(ans,"") != awaitedResult {
-        t.Error("Expected", awaitedResult, "got", ans)
-    }
+	ans, _ := AESCBC(data, "127.0.0.1", 49152+port, iv)
+	if strings.Join(ans, "") != awaitedResult {
+		t.Error("Expected", awaitedResult, "got", ans)
+	}
 }
 
 func TestHamming1cc(t *testing.T) {
-    fmt.Println("Testing with Hamming 32bits 1 clock cycles, first starting the server :")
-    path :=os.Getenv("TINYGARBLE")
-    if path == "" {
-        t.Skip("skipping test; $TINYGARBLE not set")
-    }
+	fmt.Println("Testing with Hamming 32bits 1 clock cycles, first starting the server :")
+	path := os.Getenv("TINYGARBLE")
+	if path == "" {
+		t.Skip("skipping test; $TINYGARBLE not set")
+	}
 
-    SetCircuit(path,path+"/scd/netlists/hamming_32bit_1cc.scd",1,false)
+	SetCircuit(path, path+"/scd/netlists/hamming_32bit_1cc.scd", 1, false)
 
-    s1 := rand.NewSource(time.Now().UnixNano())
-    r1 := rand.New(s1)
-    port := r1.Intn(1000)
-    fmt.Println("Using port :",49152+port)
-    fmt.Println("Note that this test assumes the localhost range 49152-50152 to be usable.")
-    go YaoServer("FF55AA77",49152+port)
-    time.Sleep(time.Millisecond*100)
+	s1 := rand.NewSource(time.Now().UnixNano())
+	r1 := rand.New(s1)
+	port := r1.Intn(1000)
+	fmt.Println("Using port :", 49152+port)
+	fmt.Println("Note that this test assumes the localhost range 49152-50152 to be usable.")
+	go YaoServer("FF55AA77", 49152+port)
+	time.Sleep(time.Millisecond * 100)
 
-    ans := YaoClient("12345678", "127.0.0.1", 49152+port)
-    if ans != "13\n" {
-        t.Error("Expected 13, got", ans)
-    }
+	ans := YaoClient("12345678", "127.0.0.1", 49152+port)
+	if ans != "13\n" {
+		t.Error("Expected 13, got", ans)
+	}
 }
 
 func TestHamming8cc(t *testing.T) {
-    fmt.Println("Testing with Hamming 32bits 8 clock cycles, first starting the server :")
-    path :=os.Getenv("TINYGARBLE")
-    if path == "" {
-        t.Skip("skipping test; $TINYGARBLE not set")
-    }
+	fmt.Println("Testing with Hamming 32bits 8 clock cycles, first starting the server :")
+	path := os.Getenv("TINYGARBLE")
+	if path == "" {
+		t.Skip("skipping test; $TINYGARBLE not set")
+	}
 
-    SetCircuit(path,path+"/scd/netlists/hamming_32bit_8cc.scd",8,true)
+	SetCircuit(path, path+"/scd/netlists/hamming_32bit_8cc.scd", 8, true)
 
-    s1 := rand.NewSource(time.Now().UnixNano())
-    r1 := rand.New(s1)
-    port := r1.Intn(1000)
-    fmt.Println("Using port :",49152+port)
-    fmt.Println("Note that this test assumes the localhost range 49152-50152 to be usable.")
-    go YaoServer("FF55AA77",49152+port)
-    time.Sleep(time.Millisecond*100)
+	s1 := rand.NewSource(time.Now().UnixNano())
+	r1 := rand.New(s1)
+	port := r1.Intn(1000)
+	fmt.Println("Using port :", 49152+port)
+	fmt.Println("Note that this test assumes the localhost range 49152-50152 to be usable.")
+	go YaoServer("FF55AA77", 49152+port)
+	time.Sleep(time.Millisecond * 100)
 
-    ans := YaoClient("12345678", "127.0.0.1", 49152+port)
-    if ans != "13\n" {
-        t.Error("Expected 13, got", ans)
-    }
+	ans := YaoClient("12345678", "127.0.0.1", 49152+port)
+	if ans != "13\n" {
+		t.Error("Expected 13, got", ans)
+	}
 }

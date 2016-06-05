@@ -181,11 +181,11 @@ func SetCircuit(tiPath string, ciPath string, clCycles int, uInput bool) {
 // An utilitary function to easily split the input data into a slice of 32 char blocks as string (or less for the last block)
 func splitData(data string) []string {
 	var toCrypt []string
-    for i,_ := range data {
+	for i, _ := range data {
 		if i > 0 && (i+1)%32 == 0 {
 			toCrypt = append(toCrypt, data[i-31:i+1])
 		} else {
-                // using len-1 because the index begin at 0, not at 1
+			// using len-1 because the index begin at 0, not at 1
 			if i == len(data)-1 {
 				toCrypt = append(toCrypt, data[len(data)-(len(data))%32:len(data)])
 			}
@@ -238,7 +238,7 @@ func YaoClient(data string, addr string, port int) string {
 
 	yaoArgs = append(yaoArgs, inputArg...)
 
-    //log.Println("Arguments used to run TinyGarble:",yaoArgs)
+	//log.Println("Arguments used to run TinyGarble:",yaoArgs)
 	cmd := exec.Command(tinyPath+"/bin/garbled_circuit/TinyGarble", yaoArgs...)
 
 	out, err := cmd.Output()
