@@ -136,3 +136,26 @@ func TestHamming1cc(t *testing.T) {
         t.Error("Expected 13, got", ans)
     }
 }
+
+func TestHamming8cc(t *testing.T) {
+    fmt.Println("Testing with Hamming 32bits 8 clock cycles, first starting the server :")
+    path :=os.Getenv("TINYGARBLE")
+    if path == "" {
+        t.Skip("skipping test; $TINYGARBLE not set")
+    }
+
+    SetCircuit(path,path+"/scd/netlists/hamming_32bit_8cc.scd",8,true)
+
+    s1 := rand.NewSource(time.Now().UnixNano())
+    r1 := rand.New(s1)
+    port := r1.Intn(1000)
+    fmt.Println("Using port :",49152+port)
+    fmt.Println("Note that this test assumes the localhost range 49152-50152 to be usable.")
+    go YaoServer("FF55AA77",49152+port)
+    time.Sleep(time.Millisecond*500)
+
+    ans := YaoClient("12345678", "127.0.0.1", 49152+port)
+    if ans != "13" {
+        t.Error("Expected 13, got", ans)
+    }
+}
