@@ -3,6 +3,7 @@ package tinylib
 import (
 	"encoding/hex"
     "fmt"
+    "math/rand"
     "os"
     "strings"
     "time"
@@ -53,8 +54,7 @@ func TestXorStr(t *testing.T) {
 }
 
 func TestAESServ(t *testing.T) {
-    t.Parallel()
-    fmt.Println("Starting test of the server")
+    fmt.Println("Starting AES CTR mode test")
     path :=os.Getenv("TINYGARBLE")
     if path == "" {
         t.Skip("skipping test; $TINYGARBLE not set")
@@ -63,31 +63,53 @@ func TestAESServ(t *testing.T) {
     key := "2b7e151628aed2a6abf7158809cf4f3c"
 
     SetCircuit(path,path+"/scd/netlists/aes_1cc.scd",1,false)
-    go AESServer(key,1234,1)
-}
+    s1 := rand.NewSource(time.Now().UnixNano())
+    r1 := rand.New(s1)
+    port := r1.Intn(100)
+    fmt.Println("Using port :", 1234+port)
+    fmt.Println("Note that this test assumes the localhost range 1234-1334 to be usable.")
+    go AESServer(key,1234+port,1)
+    time.Sleep(500*time.Millisecond)
 
-func TestAESCTR(t *testing.T) {
-    t.Parallel()
-    fmt.Println("Starting test of the AES CTR client, waiting for the server")
-    // This could be better if done without using sleep
-    time.Sleep(1*time.Second)
     fmt.Println("Continuing test with the client")
 
     iv := "f0f1f2f3f4f5f6f7f8f9fafbfcfdfeff"
     data := "6bc1bee22e409f96e93d7e117393172a"
     awaitedResult := "874d6191b620e3261bef6864990db6ce"
-    path :=os.Getenv("TINYGARBLE")
-    if path == "" {
-        t.Skip("skipping test; $TINYGARBLE not set")
-    }
 
-    SetCircuit(path,path+"/scd/netlists/aes_1cc.scd",1,false)
-
-    ans, _ := AESCTR(data,"127.0.0.1",1234,iv)
+    ans, _ := AESCTR(data,"127.0.0.1",1234+port,iv)
 
     if ans[0] != strings.ToUpper(awaitedResult) {
 		t.Error("Expected 874d6191b620e3261bef6864990db6ce, got ", ans)
     } else {
         fmt.Println("AES CTR Test passed")
+    }
+}
+
+func TestAESCBC(t *testing.T) {
+    fmt.Println("Testing the AES CBC mode, first starting the server :")
+    path :=os.Getenv("TINYGARBLE")
+    if path == "" {
+        t.Skip("skipping test; $TINYGARBLE not set")
+    }
+
+    key := "2b7e151628aed2a6abf7158809cf4f3c"
+
+    SetCircuit(path,path+"/scd/netlists/aes_1cc.scd",1,false)
+    s1 := rand.NewSource(time.Now().UnixNano())
+    r1 := rand.New(s1)
+    port := r1.Intn(100)
+    fmt.Println("Using port :", 1234+port)
+    fmt.Println("Note that this test assumes the localhost range 1234-1334 to be usable.")
+    go AESServer(key,1234+port,1)
+    time.Sleep(time.Millisecond*500)
+
+    iv := "7649ABAC8119B246CEE98E9B12E9197D"
+    data := "ae2d8a571e03ac9c9eb76fac45af8e51"
+    awaitedResult := strings.ToUpper("5086cb9b507219ee95db113a917678b2")
+
+    ans, _ := AESCBC(data,"127.0.0.1", 1234+port,iv)
+    if ans[0] != awaitedResult {
+        t.Error("Expected", awaitedResult, "got", ans)
     }
 }

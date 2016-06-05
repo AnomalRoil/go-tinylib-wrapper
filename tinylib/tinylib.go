@@ -28,8 +28,8 @@ func AESCBC(data string, addr string, port int, iv string) ([]string, string) {
 	toCrypt = splitData(data)
 	ivUsed := ivGeneration(iv)
 	// We can use the IV to do ciphertext stealing in case of <128 bits data, but this will be implemented later
-	if len(toCrypt) < 2 {
-		log.Fatal("As of now, this CBC implementation needs more at least 128 bits of data to encrypt them")
+	if len(toCrypt[0]) < 16 {
+		log.Fatal("As of now, this CBC implementation needs at least 128 bits of data to encrypt them")
 	}
 	// we set the IV as the first item used for xoring:
 	xoring := hex.EncodeToString(ivUsed)
