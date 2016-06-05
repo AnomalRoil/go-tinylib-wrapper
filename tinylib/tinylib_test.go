@@ -67,9 +67,9 @@ func TestAESServ(t *testing.T) {
     r1 := rand.New(s1)
     port := r1.Intn(5000)
     fmt.Println("Using port :", 49152+port)
-    fmt.Println("Note that this test uses randomly 4 consequent ports in the range 49152-54152.")
+    fmt.Println("Note that this test uses randomly 4 consequent ports in the range 49152-54152. So it may fail if one of those ports is not usable. You may have to rerun it if it fails with an 'exit status 255'")
     go AESServer(key,49152+port,4)
-    time.Sleep(500*time.Millisecond)
+    time.Sleep(100*time.Millisecond)
 
     fmt.Println("Continuing test with the client")
 
@@ -100,9 +100,10 @@ func TestAESCBC(t *testing.T) {
     r1 := rand.New(s1)
     port := r1.Intn(1000)
     fmt.Println("Using port :",49152+port)
-    fmt.Println("Note that this test assumes the localhost range 49152-50152 to be usable.")
+    fmt.Println("Note that this test assumes the localhost range 49152-50152 to be usable.",
+    "So it may fail if one of those port is not usable. You may have to rerun it if it fails with an 'exit status 255'")
     go AESServer(key,49152+port,3)
-    time.Sleep(time.Millisecond*500)
+    time.Sleep(time.Millisecond*100)
 
     iv   := "00000000000000000000000000000000"
     data := "4920776f756c64206c696b65207468652047656e6572616c20476175277320436869636b656e2c20706c656173652c"
@@ -129,7 +130,7 @@ func TestHamming1cc(t *testing.T) {
     fmt.Println("Using port :",49152+port)
     fmt.Println("Note that this test assumes the localhost range 49152-50152 to be usable.")
     go YaoServer("FF55AA77",49152+port)
-    time.Sleep(time.Millisecond*500)
+    time.Sleep(time.Millisecond*100)
 
     ans := YaoClient("12345678", "127.0.0.1", 49152+port)
     if ans != "13\n" {
@@ -152,10 +153,10 @@ func TestHamming8cc(t *testing.T) {
     fmt.Println("Using port :",49152+port)
     fmt.Println("Note that this test assumes the localhost range 49152-50152 to be usable.")
     go YaoServer("FF55AA77",49152+port)
-    time.Sleep(time.Millisecond*500)
+    time.Sleep(time.Millisecond*100)
 
     ans := YaoClient("12345678", "127.0.0.1", 49152+port)
-    if ans != "13" {
+    if ans != "13\n" {
         t.Error("Expected 13, got", ans)
     }
 }
