@@ -2,6 +2,10 @@ package tinylib
 
 import (
 	"encoding/hex"
+    "fmt"
+    "os"
+    "strings"
+    "time"
 	"testing"
 )
 
@@ -48,8 +52,42 @@ func TestXorStr(t *testing.T) {
 	}
 }
 
-// Test vector for AES-CTR 128:
-// IV : f0f1f2f3f4f5f6f7f8f9fafbfcfdfeff
-// Encryption Key : 2b7e151628aed2a6abf7158809cf4f3c
-//
-// test : 6bc1bee22e409f96e93d7e117393172a --> 874d6191b620e3261bef6864990db6ce
+func TestAESServ(t *testing.T) {
+    t.Parallel()
+    fmt.Println("Starting test of the server")
+    path :=os.Getenv("TINYGARBLE")
+    if path == "" {
+        t.Skip("skipping test; $TINYGARBLE not set")
+    }
+
+    key := "2b7e151628aed2a6abf7158809cf4f3c"
+
+    SetCircuit(path,path+"/scd/netlists/aes_1cc.scd",1,false)
+    go AESServer(key,1234,1)
+}
+
+func TestAESCTR(t *testing.T) {
+    t.Parallel()
+    fmt.Println("Starting test of the AES CTR client, waiting for the server")
+    // This could be better if done without using sleep
+    time.Sleep(1*time.Second)
+    fmt.Println("Continuing test with the client")
+
+    iv := "f0f1f2f3f4f5f6f7f8f9fafbfcfdfeff"
+    data := "6bc1bee22e409f96e93d7e117393172a"
+    awaitedResult := "874d6191b620e3261bef6864990db6ce"
+    path :=os.Getenv("TINYGARBLE")
+    if path == "" {
+        t.Skip("skipping test; $TINYGARBLE not set")
+    }
+
+    SetCircuit(path,path+"/scd/netlists/aes_1cc.scd",1,false)
+
+    ans, _ := AESCTR(data,"127.0.0.1",1234,iv)
+
+    if ans[0] != strings.ToUpper(awaitedResult) {
+		t.Error("Expected 874d6191b620e3261bef6864990db6ce, got ", ans)
+    } else {
+        fmt.Println("AES CTR Test passed")
+    }
+}
