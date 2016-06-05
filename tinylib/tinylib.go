@@ -26,6 +26,7 @@ func AESCBC(data string, addr string, port int, iv string) ([]string, string) {
 	// splitting the data into 128 bits blocks or less for the last one.
 	// We are using ciphertext stealing to avoid padding
 	toCrypt = splitData(data)
+    fmt.Println("tocrypt:",toCrypt, "\nData:", data )
 	ivUsed := ivGeneration(iv)
 	// We can use the IV to do ciphertext stealing in case of <128 bits data, but this will be implemented later
 	if len(toCrypt[0]) < 16 {
@@ -36,8 +37,9 @@ func AESCBC(data string, addr string, port int, iv string) ([]string, string) {
 	// secure encryption of the data :
 	for i, r := range toCrypt {
 		dataLen := len(r)
+        fmt.Println("r",r, len(toCrypt))
 		// if we use ciphertext stealing we need to pad the data with 0's
-		if i == len(toCrypt) && dataLen < 32 {
+		if i == len(toCrypt)-1 && dataLen < 32 {
 			r += strings.Repeat("0", 32-dataLen)
 			fmt.Println("Using ciphertext stealing on", xoring, r, dataLen)
 		}
@@ -47,12 +49,13 @@ func AESCBC(data string, addr string, port int, iv string) ([]string, string) {
 		// We have to reverse endianness from the output to work again in big endian
 		ct := ReverseEndianness(YaoClient(plain, addr, port+i))
 		cipher = append(cipher, ct)
-		xoring = ct
 		// ciphertext stealing in action:
-		if i == len(toCrypt) && dataLen < 32 {
-			stolenCiph := cipher[len(cipher)-1][:dataLen]
+		if i == len(toCrypt)-1 && dataLen < 32 {
+            fmt.Println("Using ciphertext stealing")
+			stolenCiph := xoring[:dataLen]
 			cipher = append(cipher[:len(cipher)-2], ct, stolenCiph)
 		}
+		xoring = ct
 	}
 
 	return cipher, hex.EncodeToString(ivUsed)
@@ -181,12 +184,12 @@ func SetCircuit(tiPath string, ciPath string, clCycles int, uInput bool) {
 // An utilitary function to easily split the input data into a slice of 32 char blocks as string (or less for the last block)
 func splitData(data string) []string {
 	var toCrypt []string
-	for i, _ := range data {
+    for i,_ := range data {
 		if i > 0 && (i+1)%32 == 0 {
 			toCrypt = append(toCrypt, data[i-31:i+1])
 		} else {
-			if i == len(data) {
-				toCrypt = append(toCrypt, data[len(data)-(len(data)+1)%32:len(data)])
+			if i == len(data)-1 {
+				toCrypt = append(toCrypt, data[len(data)-(len(data))%32:len(data)])
 			}
 		}
 	}

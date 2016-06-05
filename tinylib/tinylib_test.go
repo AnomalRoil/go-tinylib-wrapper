@@ -65,22 +65,22 @@ func TestAESServ(t *testing.T) {
     SetCircuit(path,path+"/scd/netlists/aes_1cc.scd",1,false)
     s1 := rand.NewSource(time.Now().UnixNano())
     r1 := rand.New(s1)
-    port := r1.Intn(100)
-    fmt.Println("Using port :", 1234+port)
-    fmt.Println("Note that this test assumes the localhost range 1234-1334 to be usable.")
-    go AESServer(key,1234+port,1)
+    port := r1.Intn(5000)
+    fmt.Println("Using port :", 49152+port)
+    fmt.Println("Note that this test uses randomly 4 consequent ports in the range 49152-54152.")
+    go AESServer(key,49152+port,4)
     time.Sleep(500*time.Millisecond)
 
     fmt.Println("Continuing test with the client")
 
     iv := "f0f1f2f3f4f5f6f7f8f9fafbfcfdfeff"
-    data := "6bc1bee22e409f96e93d7e117393172a"
-    awaitedResult := "874d6191b620e3261bef6864990db6ce"
+    data := "6bc1bee22e409f96e93d7e117393172aae2d8a571e03ac9c9eb76fac45af8e5130c81c46a35ce411e5fbc1191a0a52eff69f2445df4f9b17ad2b417be66c3710"
+    awaitedResult := "874d6191b620e3261bef6864990db6ce9806f66b7970fdff8617187bb9fffdff5ae4df3edbd5d35e5b4f09020db03eab1e031dda2fbe03d1792170a0f3009cee"
 
-    ans, _ := AESCTR(data,"127.0.0.1",1234+port,iv)
+    ans, _ := AESCTR(data,"127.0.0.1",49152+port,iv)
 
-    if ans[0] != strings.ToUpper(awaitedResult) {
-		t.Error("Expected 874d6191b620e3261bef6864990db6ce, got ", ans)
+    if strings.Join(ans,"") != strings.ToUpper(awaitedResult) {
+		t.Error("Expected 874d6191b620e3261bef6864990db6ce9806f66b7970fdff8617187bb9fffdff5ae4df3edbd5d35e5b4f09020db03eab1e031dda2fbe03d1792170a0f3009cee, got ", ans)
     } else {
         fmt.Println("AES CTR Test passed")
     }
@@ -93,23 +93,23 @@ func TestAESCBC(t *testing.T) {
         t.Skip("skipping test; $TINYGARBLE not set")
     }
 
-    key := "2b7e151628aed2a6abf7158809cf4f3c"
+    key := "636869636b656e207465726979616b69"
 
     SetCircuit(path,path+"/scd/netlists/aes_1cc.scd",1,false)
     s1 := rand.NewSource(time.Now().UnixNano())
     r1 := rand.New(s1)
-    port := r1.Intn(100)
-    fmt.Println("Using port :", 1234+port)
-    fmt.Println("Note that this test assumes the localhost range 1234-1334 to be usable.")
-    go AESServer(key,1234+port,1)
+    port := r1.Intn(1000)
+    fmt.Println("Using port :",49152+port)
+    fmt.Println("Note that this test assumes the localhost range 49152-50152 to be usable.")
+    go AESServer(key,49152+port,3)
     time.Sleep(time.Millisecond*500)
 
-    iv := "7649ABAC8119B246CEE98E9B12E9197D"
-    data := "ae2d8a571e03ac9c9eb76fac45af8e51"
-    awaitedResult := strings.ToUpper("5086cb9b507219ee95db113a917678b2")
+    iv   := "00000000000000000000000000000000"
+    data := "4920776f756c64206c696b65207468652047656e6572616c20476175277320436869636b656e2c20706c656173652c"
+    awaitedResult := strings.ToUpper("97687268d6ecccc0c07b25e25ecfe584b3fffd940c16a18c1b5549d2f838029e39312523a78662d5be7fcbcc98ebf5")
 
-    ans, _ := AESCBC(data,"127.0.0.1", 1234+port,iv)
-    if ans[0] != awaitedResult {
+    ans, _ := AESCBC(data,"127.0.0.1",49152+port,iv)
+    if strings.Join(ans,"") != awaitedResult {
         t.Error("Expected", awaitedResult, "got", ans)
     }
 }
