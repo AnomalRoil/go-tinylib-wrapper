@@ -20,7 +20,7 @@ var forceInput bool
 // Be careful, you have to first set the TinyGarble Path and the Circuit Path to the AES-128 circuit, in order to use this
 // This function allows to use TinyGarble to encrypt more than 128 bits of data using CBC mode with ciphertext stealing (to avoid padding)
 func AESCBC(data string, addr string, port int, iv string) ([]string, string) {
-	fmt.Println("AES CBC started")
+	fmt.Println("\tAES CBC started")
 
 	var toCrypt []string
 	var cipher []string
@@ -61,7 +61,7 @@ func AESCBC(data string, addr string, port int, iv string) ([]string, string) {
 // Be careful, you have to first set the TinyGarble Path and the Circuit Path to the AES-128 circuit, in order to use this
 // This function allows to use Tinygarble to encrypt more than 128 bit in a secure way through the use of CTR mode
 func AESCTR(data string, addr string, port int, iv string) ([]string, string) {
-	fmt.Println("AES CTR started")
+	fmt.Println("\tAES CTR started")
 
 	//lets splice our data into 32 char :
 	var toCrypt []string
@@ -140,7 +140,7 @@ func ivGeneration(customIv string) []byte {
 	}
 	// To allow the use of a given  iv (mainly for testing purpose) :
 	if customIv != "" && len(customIv) == 32 {
-		fmt.Println("Be careful when using a custom iv as now: randomness reuses are dangerous")
+		fmt.Println("\tBe careful when using a custom iv as now: randomness reuses are dangerous")
 		ivByte, err = hex.DecodeString(customIv)
 		if err != nil {
 			log.Fatal(err)
@@ -214,7 +214,7 @@ func xorStr(str1 string, str2 string) string {
 
 // The wrapper function for the TinyGarble client option
 func YaoClient(data string, addr string, port int) string {
-	fmt.Printf("Client running on address %s and port %d.\n", addr, port)
+	fmt.Printf("\tClient running on address %s and port %d.\n", addr, port)
 
 	// we will use the following arguments when we run the client :
 	var yaoArgs []string
@@ -238,6 +238,7 @@ func YaoClient(data string, addr string, port int) string {
 
 	yaoArgs = append(yaoArgs, inputArg...)
 
+    //log.Println("Arguments used to run TinyGarble:",yaoArgs)
 	cmd := exec.Command(tinyPath+"/bin/garbled_circuit/TinyGarble", yaoArgs...)
 
 	out, err := cmd.Output()
@@ -250,7 +251,7 @@ func YaoClient(data string, addr string, port int) string {
 
 // A wrapper function for the TinyGarble with server (alice) argument set
 func YaoServer(data string, port int) {
-	fmt.Printf("Server running on port %d.\n", port)
+	fmt.Printf("\tServer running on port %d.\n", port)
 
 	var yaoArgs []string
 	yaoArgs = []string{"-a", "-i", circuitPath,
