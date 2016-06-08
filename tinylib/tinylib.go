@@ -26,7 +26,7 @@ func AESCBC(data string, addr string, port int, iv string) ([]string, string) {
 	var cipher []string
 	// splitting the data into 128 bits blocks or less for the last one.
 	// We are using ciphertext stealing to avoid padding
-	toCrypt = splitData(data)
+	toCrypt = SplitData(data,32)
 	ivUsed := ivGeneration(iv)
 	// We can use the IV to do ciphertext stealing in case of <128 bits data, but this will be implemented later
 	if len(toCrypt[0]) < 16 {
@@ -67,7 +67,7 @@ func AESCTR(data string, addr string, port int, iv string) ([]string, string) {
 	var toCrypt []string
 	var cipher []string
 	// we split the data into 128 bits or less for the last one. No padding needed for CTR mode
-	toCrypt = splitData(data)
+	toCrypt = SplitData(data,32)
 
 	// Counter generation:
 	// counter size is 128 bits and is a nonce unless a custom one is used, i.e. iv!="":
@@ -111,24 +111,7 @@ func AESCTR(data string, addr string, port int, iv string) ([]string, string) {
 	return cipherText, hex.EncodeToString(counterByte)
 }
 
-// Be careful, you have to first set the TinyGarble Path and the Circuit Path to the AES-128 circuit, in order to use this
-// This function allows to run an AES server a given number of time "rounds", incrementing the port number each time to avoid problems with the TIME_WAIT
-func AESServer(key string, startingPort int, rounds int) {
-	// Note the change of endianness for the data, since TinyGarble uses little endian
-	key = ReverseEndianness(key)
-	// TODO : find a good way to decide weither the server can stop or not
-	// maybe establish myself a TCP connexion in order to communicate with
-	// Bob to decide the next port to use and/or if it is finished ???
-	// However it'll be certainly easier to just timeout
-	for rounds > 0 || rounds < 0 { // This allows unending server cycles
-		YaoServer(key, startingPort)
-		startingPort++
-		rounds--
-		// This terminates when rounds == 0
-	}
-}
-
-// A method allowing one to generate a random iv in a byte slice or to set this iv to the given string (assuming a big endian representation in hexadecimal)
+// A method allowing one to generate a random iv in a byte slice or to set this iv to the given string (assuming a big endian representation in hexadecimal) and using the secure PRNG from "crypto/rand"
 func ivGeneration(customIv string) []byte {
 	// iv generation:
 	// iv size is 128 bits:
@@ -170,6 +153,22 @@ func ReverseEndianness(data string) string {
 	return ans
 }
 
+// Be careful, you have to first set the TinyGarble Path and the Circuit Path to the AES-128 circuit, in order to use this
+// This function allows to run an server a given number of time "rounds", incrementing the port number each time to avoid problems with the TIME_WAIT
+func RunServer(key string, startingPort int, rounds int) {
+	// TODO : find a good way to decide weither the server can stop or not
+	// maybe establish a TCP connexion in order to communicate with
+	// Bob to decide the next port to use and/or if it is finished?
+	// However it'll be certainly easier to just timeout. As of now fixed number of rounds:
+	for rounds != 0 { // This allows unending server cycles
+		YaoServer(key, startingPort)
+		// Note that this will crash sometimes if the next port isn't available
+		startingPort++
+		rounds--
+		// This terminates when rounds == 0
+	}
+}
+
 // An utilitary function to set the path to the relevant component in order to be able to use TinyGarble
 func SetCircuit(tiPath string, ciPath string, clCycles int, uInput bool) {
 	tinyPath = tiPath
@@ -178,16 +177,16 @@ func SetCircuit(tiPath string, ciPath string, clCycles int, uInput bool) {
 	forceInput = uInput
 }
 
-// An utilitary function to easily split the input data into a slice of 32 char blocks as string (or less for the last block)
-func splitData(data string) []string {
+// An utilitary function to easily split the input data into a slice of char blocks of variable sizes as string (or less for the last block)
+func SplitData(data string, length int) []string {
 	var toCrypt []string
 	for i, _ := range data {
-		if i > 0 && (i+1)%32 == 0 {
-			toCrypt = append(toCrypt, data[i-31:i+1])
+		if i > 0 && (i+1)%length == 0 {
+			toCrypt = append(toCrypt, data[i-length-1:i+1])
 		} else {
 			// using len-1 because the index begin at 0, not at 1
 			if i == len(data)-1 {
-				toCrypt = append(toCrypt, data[len(data)-(len(data))%32:len(data)])
+				toCrypt = append(toCrypt, data[len(data)-(len(data))%length:len(data)])
 			}
 		}
 	}

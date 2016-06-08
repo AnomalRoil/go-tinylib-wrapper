@@ -68,7 +68,9 @@ func main() {
 	switch {
 	case (*cbcPtr || *ctrPtr) && *alicePtr:
 		fmt.Println("Launching AES CTR server with key:", *initPtr)
-		tinylib.AESServer(*initPtr, *portsPtr, -1)
+		// Note the change of endianness for the data, since the AES_1cc uses little endian
+		// Run for ever since -1 is decremented
+		tinylib.RunServer(tinylib.ReverseEndianness(*initPtr), *portsPtr, -1)
 		fmt.Println("AES Server terminated")
 	case *ctrPtr && *bobPtr:
 		cipher, ivUsed := tinylib.AESCTR(*initPtr, *addrPtr, *portsPtr, *customIv)
