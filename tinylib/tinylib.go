@@ -27,11 +27,12 @@ func AESCBC(data string, addr string, port int, o_iv ...string) ([]string, strin
 	// splitting the data into 128 bits blocks or less for the last one.
 	toCrypt = SplitData(data,32)
 	// We are using ciphertext stealing to avoid to have to use padding on the data
-	
+
 	//IV
 	iv := ""
 	//check wheter an optional iv is specified, since we just work with AES 128, we conditionnally check if it has the good length to be an iv
 	if len(o_iv) > 0 && len(o_iv[0]) == 32 {
+        fmt.Println("Using optionnal IV")
 		iv = o_iv[0]
 		//Note that we should also test wheter it is an hexadecimanl string for completness, but we don't as of now.
 	}
@@ -197,7 +198,7 @@ func SplitData(data string, length int) []string {
 	var toCrypt []string
 	for i, _ := range data {
 		if i > 0 && (i+1)%length == 0 {
-			toCrypt = append(toCrypt, data[i-length-1:i+1])
+			toCrypt = append(toCrypt, data[i-length+1:i+1])
 		} else {
 			// using len-1 because the index begin at 0, not at 1
 			if i == len(data)-1 {

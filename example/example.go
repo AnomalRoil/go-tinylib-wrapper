@@ -83,7 +83,8 @@ func main() {
 	case *alicePtr:
 		tinylib.YaoServer(*initPtr, *portsPtr)
 	case *bobPtr:
-		tinylib.YaoClient(*initPtr, *addrPtr, *portsPtr)
+            ret := tinylib.YaoClient(*initPtr, *addrPtr, *portsPtr)
+            fmt.Println("Client's return value:", ret)
 	default: // if running neither as Alice, nor as Bob, there is a misuse
 		log.Fatal("Please run as server Alice (-a) first and then as Bob (-b). Use -h for help.")
 	}
