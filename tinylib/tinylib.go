@@ -19,17 +19,25 @@ var forceInput bool
 
 // Be careful, you have to first set the TinyGarble Path and the Circuit Path to the AES-128 circuit, in order to use this
 // This function allows to use TinyGarble to encrypt more than 128 bits of data using CBC mode with ciphertext stealing (to avoid padding)
-func AESCBC(data string, addr string, port int, iv string) ([]string, string) {
+func AESCBC(data string, addr string, port int, o_iv ...string) ([]string, string) {
 	fmt.Println("\tAES CBC started")
 
 	var toCrypt []string
 	var cipher []string
 	// splitting the data into 128 bits blocks or less for the last one.
-	// We are using ciphertext stealing to avoid padding
 	toCrypt = SplitData(data,32)
+	// We are using ciphertext stealing to avoid to have to use padding on the data
+	
+	//IV
+	iv := ""
+	//check wheter an optional iv is specified, since we just work with AES 128, we conditionnally check if it has the good length to be an iv
+	if len(o_iv) > 0 && len(o_iv[0]) == 32 {
+		iv = o_iv[0]
+		//Note that we should also test wheter it is an hexadecimanl string for completness, but we don't as of now.
+	}
 	ivUsed := ivGeneration(iv)
 	// We can use the IV to do ciphertext stealing in case of <128 bits data, but this will be implemented later
-	if len(toCrypt[0]) < 16 {
+	if len(toCrypt[0]) < 32 {
 		log.Fatal("As of now, this CBC implementation needs at least 128 bits of data to encrypt them")
 	}
 	// we set the IV as the first item used for xoring:
@@ -60,7 +68,7 @@ func AESCBC(data string, addr string, port int, iv string) ([]string, string) {
 
 // Be careful, you have to first set the TinyGarble Path and the Circuit Path to the AES-128 circuit, in order to use this
 // This function allows to use Tinygarble to encrypt more than 128 bit in a secure way through the use of CTR mode
-func AESCTR(data string, addr string, port int, iv string) ([]string, string) {
+func AESCTR(data string, addr string, port int, o_iv ...string) ([]string, string) {
 	fmt.Println("\tAES CTR started")
 
 	//lets splice our data into 32 char :
@@ -70,9 +78,15 @@ func AESCTR(data string, addr string, port int, iv string) ([]string, string) {
 	toCrypt = SplitData(data,32)
 
 	// Counter generation:
-	// counter size is 128 bits and is a nonce unless a custom one is used, i.e. iv!="":
+	iv := ""
+	//check wheter an optional iv is specified, since we just work with AES 128, we conditionnally check if it has the good length to be an iv
+	if len(o_iv) > 0 && len(o_iv[0]) == 32 {
+		iv = o_iv[0]
+		//Note that we should also test wheter it is an hexadecimanl string for completness, but we don't as of now.
+	}
+	// counter size is 128 bits and is a random nonce unless a custom one is used, i.e. iv!="":
 	counterByte := ivGeneration(iv)
-	// we split the counter and increment only the last 64 bits so we can use the int64 type without needing to use big int: this is okay since we won't encrypt exabytes of data
+	// we split the counter and increment only the last 64 bits so we can use the int64 type without needing to use big int: this is okay since we won't encrypt exabytes of data and since the probability for being almost at the end of the counter is too low to be worrysome. However it may be good, later, to ensure the counter doesn't reach its max value, since this is still a (low probability) bug.
 	halfCounter := counterByte[8:]
 	var count uint64
 	// we set count to be equal to the value stored as bytes in the halfCounter
@@ -95,6 +109,7 @@ func AESCTR(data string, addr string, port int, iv string) ([]string, string) {
 		counter = append(counter, hex.EncodeToString(halfCounter))
 		// we increment the counter
 		count = count + uint64(1)
+		// Note that a unint64 won't overflow but wrap around in golang
 	}
 
 	// secure encryption of the counter :
