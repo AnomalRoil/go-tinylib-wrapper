@@ -68,7 +68,7 @@ func TestAESServ(t *testing.T) {
 	port := r1.Intn(5000)
 	fmt.Println("Using port :", 49152+port)
 	fmt.Println("Note that this test uses randomly 4 consequent ports in the range 49152-54152. So it may fail if one of those ports is not usable. You may have to rerun it if it fails with an 'exit status 255'")
-    // Using a Goroutine to run concurrently with the client. Note that it is he caller responsibility to reverse endianness if needed by the used circuit, which is the case here.
+	// Using a Goroutine to run concurrently with the client. Note that it is he caller responsibility to reverse endianness if needed by the used circuit, which is the case here.
 	go RunServer(ReverseEndianness(key), 49152+port, 4)
 	time.Sleep(100 * time.Millisecond)
 
@@ -103,7 +103,7 @@ func TestAESCBC(t *testing.T) {
 	fmt.Println("Using port :", 49152+port)
 	fmt.Println("Note that this test assumes the localhost range 49152-50152 to be usable.",
 		"So it may fail if one of those port is not usable. You may have to rerun it if it fails with an 'exit status 255'")
-    // Using a Goroutine to run concurrently with the client. Note that it is he caller responsibility to reverse endianness if needed by the used circuit, which is the case here.
+	// Using a Goroutine to run concurrently with the client. Note that it is he caller responsibility to reverse endianness if needed by the used circuit, which is the case here.
 	go RunServer(ReverseEndianness(key), 49152+port, 3)
 	time.Sleep(time.Millisecond * 100)
 

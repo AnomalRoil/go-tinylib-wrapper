@@ -25,14 +25,14 @@ func AESCBC(data string, addr string, port int, o_iv ...string) ([]string, strin
 	var toCrypt []string
 	var cipher []string
 	// splitting the data into 128 bits blocks or less for the last one.
-	toCrypt = SplitData(data,32)
+	toCrypt = SplitData(data, 32)
 	// We are using ciphertext stealing to avoid to have to use padding on the data
 
 	//IV
 	iv := ""
 	//check wheter an optional iv is specified, since we just work with AES 128, we conditionnally check if it has the good length to be an iv
 	if len(o_iv) > 0 && len(o_iv[0]) == 32 {
-        fmt.Println("Using optionnal IV")
+		fmt.Println("Using optionnal IV")
 		iv = o_iv[0]
 		//Note that we should also test wheter it is an hexadecimanl string for completness, but we don't as of now.
 	}
@@ -76,7 +76,7 @@ func AESCTR(data string, addr string, port int, o_iv ...string) ([]string, strin
 	var toCrypt []string
 	var cipher []string
 	// we split the data into 128 bits or less for the last one. No padding needed for CTR mode
-	toCrypt = SplitData(data,32)
+	toCrypt = SplitData(data, 32)
 
 	// Counter generation:
 	iv := ""
