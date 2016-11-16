@@ -1,0 +1,3 @@
+[submodule "TinyGarble"]
+	path = TinyGarble
+	url = https://github.com/esonghori/TinyGarble.git

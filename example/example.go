@@ -3,9 +3,9 @@ package main
 import (
 	"flag"
 	"fmt"
+	"github.com/anomalroil/go-tinylib-wrapper/tinylib"
 	"log"
 	"os"
-	"projet-pa-yao/code/tinylib"
 	"strings"
 )
 
