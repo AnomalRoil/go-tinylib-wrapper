@@ -114,6 +114,8 @@ func TestAESCBC(t *testing.T) {
 	ans, _ := AESCBC(data, "127.0.0.1", 49152+port, iv)
 	if strings.Join(ans, "") != awaitedResult {
 		t.Error("Expected", awaitedResult, "got", ans)
+	} else {
+		t.Logf("Got the expected value")
 	}
 }
 
@@ -137,6 +139,8 @@ func TestHamming1cc(t *testing.T) {
 	ans := YaoClient("12345678", "127.0.0.1", 49152+port)
 	if ans != "13\n" {
 		t.Error("Expected 13, got", ans)
+	} else {
+		t.Logf("Got 13 as expected")
 	}
 }
 
@@ -160,5 +164,7 @@ func TestHamming8cc(t *testing.T) {
 	ans := YaoClient("12345678", "127.0.0.1", 49152+port)
 	if ans != "13\n" {
 		t.Error("Expected 13, got", ans)
+	} else {
+		t.Logf("Got 13 as expected")
 	}
 }

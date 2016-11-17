@@ -4,8 +4,8 @@ import (
 	"crypto/aes"
 	"encoding/hex"
 	"fmt"
+	"github.com/anomalroil/go-tinylib-wrapper/tinylib"
 	"log"
-	"projet-pa-yao/code/tinylib"
 )
 
 func main() {
