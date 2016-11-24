@@ -26,16 +26,19 @@ And for CTR mode :
 
     func AESCTR(data string, addr string, port int, iv string) ([]string, string)
 
-where the data may be any hexadecimal string of any length. CTR mode doesn't requires anypadding. The address and port should be those of the AESServer.
+where the data may be any hexadecimal string of any length. CTR mode doesn't requires any padding. The address and port should be those of the AESServer.
 In order to be able to run those client function, a server should be listenning on the same ports at each step. The following function allows to run a server which will stop after a given number of *rounds*:
 
     func AESServer(key string, startingPort int, rounds int)
 
 The starting port is incremented each time a new block is to be encrypted, so it should be in a range where the next ports are free. As of now, the wrapper is not yet able to establish a TCP session and then to dynamically choose which port he uses for the next block encryption. This may be a useful future extension.
 
+**Warning:** in any real setup, you want to absolutely avoid using CTR mode with MPC, since it would be completely broken because of the very way one may trigger an IV reuse. (In my current setup, Eve can simply provide the same IV as Bob along with any plaintext she want to and so will be able to break Bob's encrypted data, if she intercepted it.)
+On the other hand, CBC should be fine since it doesn't expose the plaintext directly (the AES process is applied to the plaintext, unlike CTR mode).
+
 ## Example program
-I also provided an example program mimicking the current TinyGarble CLI.
-Usage :
+I also provided an example program mimicking the current TinyGarble CLI, using the tinylib.
+Usage:
 
     $ example/example -h
         Usage of ./example:
@@ -43,7 +46,7 @@ Usage :
           -b=false: Run as client Bob
           -c="$TINYGARBLE/scd/netlists": location of the circuit root directory. Default : $TINYGARBLE/scd/netlists
           -cbc: allows one to run in CBC mode as implemented in tinylib
-          -cc=1: number of clock cycles needed for this circuit, usually 1, usually indicated at the end of the circuit name, aes_11cc needs 11 clock cycles for example (but is completely unsecure).
+          -cc=1: number of clock cycles needed for this circuit, usually 1, usually indicated at the end of the circuit name, aes_11cc needs 11 clock cycles for example (but is completely insecure).
           -ctr=false: Run using CTR mode and aes circuit in 1cc
           -d="00000000000000000000000000000000": Init data
           -input: some circuits are using more than 1 clock cycles but don't use the init flag in TinyGarble. This allows to enforce the use of the (TinyGarble's) --input flag instead of the --init one.
@@ -53,19 +56,21 @@ Usage :
           -r="$TINYGARBLE": TinyGarble root directory path, default to $TINYGARBLE if var set, writes $TINYGARBLE if changed
           -s="127.0.0.1": Specify a server address for Bob to connect.
 
-So if you want to run the AES circuit provided with TinyGarble, using all default values, except the location of your TinyGarble root and circuits you may for instance use :
+So if you want to run the AES circuit provided with TinyGarble, using all default values, except the location of your TinyGarble root and circuits you may for instance use:
 From Alice's shell
 ```
-./example -a -r /home/Code/golang/src/github.com/anomalroil/go-tinylib-wrapper/TinyGarble -c /home/ubuntu/golang/src/github.com/anomalroil/go-tinylib-wrapper/TinyGarble/bin/scd/netlists
+./example -a -r ~/golang/src/github.com/anomalroil/go-tinylib-wrapper/TinyGarble -c ~/golang/src/github.com/anomalroil/go-tinylib-wrapper/TinyGarble/bin/scd/netlists
 ```
 From Bob's shell 
 ```
-./example -b -r ~/Code/golang/src/github.com/anomalroil/go-tinylib-wrapper/TinyGarble -c ~/Code/golang/src/github.com/anomalroil/go-tinylib-wrapper/TinyGarble/bin/scd/netlists
+./example -b -r ~/golang/src/github.com/anomalroil/go-tinylib-wrapper/TinyGarble -c ~/golang/src/github.com/anomalroil/go-tinylib-wrapper/TinyGarble/bin/scd/netlists
 ```
 
 And then you should get the following on Bob's shell:
 ```
 Client's return value: 2E2B34CA59FA4C883B2C8AEFD44BE966
 ```
+
+In order to do so you'll have to compile the scd file first, see [TinyGarble](https://github.com/esonghori/TinyGarble) documentation, there is a script to do so.
 
 Note that currently it seems like one can't reuse the same port directly (there seems to be a timeout after TinyGarble closes the port it used, so the -cbc mode for the server will respawn a TinyGarble server running on the next port after each block for instance.)
